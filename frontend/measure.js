@@ -18,7 +18,8 @@ const Measure = (() => {
   // vision deficiency against the panel background); later passes are grey.
   const PASS_COLORS = ["#3987e5", "#d95926", "#199e70", "#c98500", "#d55181", "#0ca30c", "#9085e9", "#e66767"];
   const OTHER_COLOR = "#8a90a0";
-  const INK = "#e6e9f0", DIM = "#94a0b8", GRID = "#273042", SURFACE = "#151a25";
+  const DIM = "#8e97ab", GRID = "rgba(236,234,228,0.1)", AXIS = "rgba(236,234,228,0.36)", SURFACE = "#05060a";
+  const CHART_FONT = '12px "Geist Mono", ui-monospace, Menlo, monospace';
 
   let pick = null; // {i, j} clicked position in grid pixels
   let result = null;
@@ -231,30 +232,48 @@ const Measure = (() => {
     const ctx = cv.getContext("2d");
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     ctx.clearRect(0, 0, W, H);
-    const box = { l: 58, r: W - 12, t: 10, b: H - 40 };
+    const labelled = id === "spec-chart" || id === "lc-chart";
+    const box = { l: 66, r: W - 16, t: labelled ? 34 : 12, b: H - 54 };
     const X = (v) => box.l + ((v - x[0]) / (x[1] - x[0])) * (box.r - box.l);
     const Y = (v) => box.b - ((v - y[0]) / (y[1] - y[0])) * (box.b - box.t);
-    ctx.font = "11px system-ui, sans-serif";
+    ctx.font = CHART_FONT;
     ctx.lineWidth = 1;
     ctx.textBaseline = "middle";
     ctx.textAlign = "right";
     for (const v of niceTicks(y[0], y[1], 5)) {
-      ctx.strokeStyle = zero != null && v === zero ? DIM : GRID;
+      // Dotted hairlines, with the zero line drawn solid.
+      const solid = zero != null && v === zero;
+      ctx.strokeStyle = solid ? AXIS : GRID;
+      ctx.setLineDash(solid ? [] : [2, 4]);
       ctx.beginPath(); ctx.moveTo(box.l, Math.round(Y(v)) + 0.5); ctx.lineTo(box.r, Math.round(Y(v)) + 0.5); ctx.stroke();
+      ctx.setLineDash([]);
       ctx.fillStyle = DIM;
-      ctx.fillText(fmtTick(v), box.l - 6, Y(v));
+      ctx.fillText(fmtTick(v), box.l - 12, Y(v));
     }
     ctx.textAlign = "center"; ctx.textBaseline = "top";
-    for (const t of xTicks) { ctx.fillStyle = DIM; ctx.fillText(t.label, X(t.value), box.b + 6); }
+    ctx.strokeStyle = AXIS;
+    for (const t of xTicks) {
+      const tx = Math.round(X(t.value)) + 0.5;
+      ctx.beginPath(); ctx.moveTo(tx, box.b + 3); ctx.lineTo(tx, box.b + 8); ctx.stroke();
+      ctx.fillStyle = DIM; ctx.fillText(t.label, X(t.value), box.b + 14);
+    }
     ctx.fillStyle = DIM;
-    ctx.fillText(xLabel, (box.l + box.r) / 2, H - 14);
-    ctx.save(); ctx.translate(12, (box.t + box.b) / 2); ctx.rotate(-Math.PI / 2); ctx.textBaseline = "middle";
+    ctx.fillText(xLabel, (box.l + box.r) / 2, H - 17);
+    ctx.save(); ctx.translate(13, (box.t + box.b) / 2); ctx.rotate(-Math.PI / 2); ctx.textBaseline = "middle";
     ctx.fillText(yLabel, 0, 0); ctx.restore();
     hits.set(id, []);
     const mark = (px, py, color, { r = 3, hollow = false, err = 0, diamond = false, html }) => {
       if (err > 0) {
-        ctx.strokeStyle = color; ctx.globalAlpha = 0.55; ctx.lineWidth = 1;
-        ctx.beginPath(); ctx.moveTo(px, Math.max(box.t, py - err)); ctx.lineTo(px, Math.min(box.b, py + err)); ctx.stroke();
+        const a = Math.max(box.t, py - err), b = Math.min(box.b, py + err);
+        ctx.strokeStyle = color; ctx.globalAlpha = 0.6; ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.moveTo(px, a); ctx.lineTo(px, b);
+        ctx.moveTo(px - 2.5, a); ctx.lineTo(px + 2.5, a); ctx.moveTo(px - 2.5, b); ctx.lineTo(px + 2.5, b);
+        ctx.stroke();
+        ctx.globalAlpha = 1;
+      }
+      if (!hollow) { // a soft halo, so points read as light on the dark plot
+        ctx.globalAlpha = 0.14; ctx.fillStyle = color;
+        ctx.beginPath(); ctx.arc(px, py, Math.min(r * 2.1, 9), 0, 2 * Math.PI); ctx.fill();
         ctx.globalAlpha = 1;
       }
       ctx.beginPath();
@@ -274,6 +293,28 @@ const Measure = (() => {
     const pad = (hi - lo || 1) * 0.06;
     const ticks = [1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5].map((v) => ({ value: v, label: String(v) }));
     const ch = frame("spec-chart", { x: [0.7, 5.05], y: [lo - (lo < 0 ? pad : 0), hi + pad], xTicks: ticks, xLabel: "Wavelength (µm)", yLabel: result.geometry.halo ? "Halo brightness (mJy)" : "Flux (mJy)", zero: 0 });
+    // The six detector bands: a tinted column each, keyed in the band's colour.
+    const { ctx, box } = ch;
+    ctx.font = CHART_FONT; ctx.textAlign = "center"; ctx.textBaseline = "top";
+    Object.values(cfg.bands).forEach(([lo, hi], k) => {
+      const a = Math.max(box.l, ch.X(lo)), b = Math.min(box.r, ch.X(hi)), color = BAND_COLORS[k + 1] || DIM;
+      ctx.fillStyle = color;
+      ctx.globalAlpha = 0.05; ctx.fillRect(a, box.t, b - a, box.b - box.t);
+      ctx.globalAlpha = 0.9; ctx.fillRect(a + 1, box.t - 9, b - a - 2, 2);
+      ctx.globalAlpha = 1; ctx.fillStyle = DIM;
+      if (b - a > 54) ctx.fillText(`Band ${k + 1}`, (a + b) / 2, box.t - 27);
+      else ctx.fillText(String(k + 1), (a + b) / 2, box.t - 27);
+    });
+    // A faint line through each pass, so the shape of the spectrum reads at a glance.
+    for (const pass of new Set(pts.map((p) => p.pass))) {
+      const line = pts.filter((p) => p.pass === pass && !p.saturated);
+      if (line.length < 2) continue;
+      ctx.strokeStyle = colorOf(pass); ctx.globalAlpha = 0.32; ctx.lineWidth = 1; ctx.lineJoin = "round";
+      ctx.beginPath();
+      line.forEach((p, k) => (k ? ctx.lineTo(ch.X(p.wave), ch.Y(p.flux)) : ctx.moveTo(ch.X(p.wave), ch.Y(p.flux))));
+      ctx.stroke();
+      ctx.globalAlpha = 1;
+    }
     for (const p of pts) {
       ch.mark(ch.X(p.wave), ch.Y(p.flux), colorOf(p.pass), {
         hollow: p.saturated, err: p.saturated ? 0 : p.err * ch.yScale,
@@ -291,6 +332,17 @@ const Measure = (() => {
     const lim = Math.max(5, ...vals.map(Math.abs)) * 1.1;
     const ticks = passes.map((p, k) => ({ value: k + 0.5, label: p.t1 - p.t0 < 1 ? fmtDate(p.t0) : `${fmtDate(p.t0).slice(0, 7)}` }));
     const ch = frame("lc-chart", { x: [0, passes.length], y: [-lim, lim], xTicks: ticks, xLabel: "Survey pass (month of observation)", yLabel: "Change from average (%)", zero: 0 });
+    // One column per pass, alternately shaded and topped in the pass's colour.
+    passes.forEach((p, k) => {
+      const a = ch.X(k), b = ch.X(k + 1);
+      ch.ctx.fillStyle = "rgb(236,234,228)";
+      ch.ctx.globalAlpha = k % 2 ? 0 : 0.035; ch.ctx.fillRect(a, ch.box.t, b - a, ch.box.b - ch.box.t);
+      ch.ctx.fillStyle = colorOf(p.index);
+      ch.ctx.globalAlpha = 0.9; ch.ctx.fillRect(a + 1, ch.box.t - 9, b - a - 2, 2);
+      ch.ctx.globalAlpha = 1; ch.ctx.fillStyle = DIM;
+      ch.ctx.font = CHART_FONT; ch.ctx.textAlign = "center"; ch.ctx.textBaseline = "top";
+      ch.ctx.fillText(`Pass ${p.index + 1}`, (a + b) / 2, ch.box.t - 27);
+    });
     passes.forEach((p, k) => {
       const color = colorOf(p.index), when = `${fmtDate(p.t0)} → ${fmtDate(p.t1)}`;
       p.bands.forEach((b, d) => {
@@ -407,13 +459,13 @@ const Measure = (() => {
 
   // ------------------------------------------------------------ public ---
 
-  function refresh() { compute(); render(); if (window.Period) Period.update(); }
+  function refresh() { compute(); render(); if (window.Period) Period.update(); if (window.Insight) Insight.update(); }
 
   return {
     refresh,
     chart: frame, // shared with the period panel
     hover,
-    clear() { pick = null; result = null; render(); if (window.Period) Period.update(); },
+    clear() { pick = null; result = null; render(); if (window.Period) Period.update(); if (window.Insight) Insight.update(); },
     /** Sky position of the selected object, or null. */
     picked() { return pick && state.field ? pixelToSky(pick.i, pick.j) : null; },
     /** The current measurements (see compute), or null. */
@@ -456,6 +508,23 @@ const Measure = (() => {
       $("measure-clear").onclick = () => { Measure.clear(); draw(); syncUrl(); };
       $("measure-link").onclick = copyLink;
       window.addEventListener("resize", () => { if (result) render(); });
+      // Redraw when a chart's own box changes size (not only the window), so a
+      // chart is never shown stretched from a drawing made at another width.
+      if ("ResizeObserver" in window) {
+        let queued = 0;
+        const sized = new ResizeObserver(() => {
+          if (queued) return;
+          queued = requestAnimationFrame(() => {
+            queued = 0;
+            const stale = ["spec-chart", "lc-chart"].some((id) => {
+              const cv = $(id), w = Math.round(cv.clientWidth * (window.devicePixelRatio || 1));
+              return cv.clientWidth > 0 && Math.abs(cv.width - w) > 1;
+            });
+            if (result && stale) render();
+          });
+        });
+        for (const id of ["spec-chart", "lc-chart"]) sized.observe($(id));
+      }
       render();
     },
   };

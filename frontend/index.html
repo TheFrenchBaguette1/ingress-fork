@@ -5,12 +5,23 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Ingress · SPHEREx sky blinker</title>
   <meta name="description" content="Watch any patch of sky change over time in NASA SPHEREx infrared images.">
-  <link rel="stylesheet" href="style.css">
+  <meta name="theme-color" content="#05060a">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' fill='%2305060a'/%3E%3Ccircle cx='36' cy='32' r='20' fill='%23f1efe9'/%3E%3Ccircle cx='18' cy='32' r='7' fill='%2305060a'/%3E%3C/svg%3E">
+  <link rel="preload" href="fonts/archivo-latin-wdth-normal.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="style.css?v=335ab00d">
+  <script>document.documentElement.classList.add("js");</script>
 </head>
 <body>
+<canvas id="sky" aria-hidden="true"></canvas>
+
 <header class="top">
-  <h1>Ingress</h1>
+  <span class="brand">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="13.5" cy="12" r="8.5" fill="currentColor"/><circle cx="6" cy="12" r="3.2" fill="#05060a" stroke="currentColor" stroke-width="1"/></svg>
+    <h1>Ingress</h1>
+  </span>
   <p>Blink SPHEREx infrared images of any patch of sky to spot things that move or vary.</p>
+  <span class="bar-meta">NASA Space Apps 2026</span>
+  <span class="bar-meta">SPHEREx challenge</span>
   <nav class="top-actions" aria-label="Information">
     <button type="button" data-dialog="dialog-help" aria-haspopup="dialog">Help</button>
     <button type="button" data-dialog="dialog-about" aria-haspopup="dialog">About</button>
@@ -18,191 +29,269 @@
   </nav>
 </header>
 
-<main class="layout">
-  <form id="query" class="panel" novalidate>
-    <h2>Field</h2>
 
-    <label for="coords">Coordinates (RA Dec, ICRS)</label>
-    <input id="coords" type="text" autocomplete="off" spellcheck="false"
-           placeholder="08h55m10.831s -7d14m42.53s  or  133.7951 -7.2451">
-    <p id="coords-echo" class="hint"></p>
+<main class="tool" id="viewer">
+  <div class="layout">
+    <form id="query" class="panel" novalidate>
+      <h2>Field</h2>
 
-    <label for="preset">Or pick a test target</label>
-    <select id="preset">
-      <option value="">Choose…</option>
-      <option value="269.4464 4.7686">Barnard's Star (fast proper motion)</option>
-      <option value="331.096 -56.801">Epsilon Indi B (brown dwarf pair)</option>
-      <option value="133.795129 -7.245147">WISE 0855−0714 (cold brown dwarf)</option>
-      <option value="76.9564 30.4014">RW Aurigae (variable star)</option>
-      <option value="248.1675 66.7550">R Draconis (variable star)</option>
-    </select>
+      <label for="coords">Coordinates (RA Dec, ICRS)</label>
+      <input id="coords" type="text" autocomplete="off" spellcheck="false"
+             placeholder="08h55m10.831s -7d14m42.53s  or  133.7951 -7.2451">
+      <p id="coords-echo" class="hint"></p>
 
-    <label for="fov">Field of view to load (arcmin)</label>
-    <input id="fov" type="number" min="1" max="20" step="0.5" value="10" required>
-    <p class="hint">Between <span id="fov-min">1</span> and <span id="fov-max">20</span>. You can zoom in to smaller fields instantly after loading.</p>
+      <label for="preset">Or pick a test target</label>
+      <select id="preset">
+        <option value="">Choose…</option>
+        <option value="269.4464 4.7686">Barnard's Star (fast proper motion)</option>
+        <option value="331.096 -56.801">Epsilon Indi B (brown dwarf pair)</option>
+        <option value="133.795129 -7.245147">WISE 0855−0714 (cold brown dwarf)</option>
+        <option value="76.9564 30.4014">RW Aurigae (variable star)</option>
+        <option value="248.1675 66.7550">R Draconis (variable star)</option>
+      </select>
 
-    <div class="row">
-      <div>
-        <label for="start">From</label>
-        <input id="start" type="date" required>
-      </div>
-      <div>
-        <label for="end">To</label>
-        <input id="end" type="date" required>
-      </div>
-    </div>
-    <p class="hint">SPHEREx survey data begins <span id="date-min"></span>.</p>
+      <label for="fov">Field of view to load (arcmin)</label>
+      <input id="fov" type="number" min="1" max="20" step="0.5" value="10" required>
+      <p class="hint">Between <span id="fov-min">1</span> and <span id="fov-max">20</span>. You can zoom in to smaller fields instantly after loading.</p>
 
-    <p id="form-error" class="error" role="alert" hidden></p>
-    <button id="load" type="submit" class="primary">Load images</button>
-
-    <div id="progress" hidden>
-      <div class="bar"><div id="bar-fill"></div></div>
-      <p id="progress-text" class="hint"></p>
-    </div>
-  </form>
-
-  <section class="viewer">
-    <div class="views" role="radiogroup" aria-label="What to look at">
-      <button id="view-compare" type="button" role="radio" aria-checked="true" class="on">
-        <span class="mark" aria-hidden="true"></span>
-        <span class="text"><b>Compare over time</b><small>Same wavelengths in every frame</small></span>
-      </button>
-      <button id="view-explore" type="button" role="radio" aria-checked="false">
-        <span class="mark" aria-hidden="true"></span>
-        <span class="text"><b>Explore wavelengths</b><small>Each frame at its own wavelength</small></span>
-      </button>
-    </div>
-    <div class="stage">
-      <canvas id="view" width="640" height="640" aria-label="SPHEREx image animation"></canvas>
-      <div id="empty" class="empty">Enter coordinates and press <b>Load images</b>.</div>
-      <div id="frame-label" class="tag tl"></div>
-      <div id="readout" class="tag bl"></div>
-      <div id="compass" class="tag tr" hidden>N ↑ &nbsp; E ←</div>
-    </div>
-
-    <div class="transport">
-      <button id="play" type="button" disabled aria-label="Play or pause">Pause</button>
-      <button id="prev" type="button" disabled aria-label="Previous frame">◀</button>
-      <input id="frame" type="range" min="0" max="0" value="0" disabled aria-label="Frame">
-      <button id="next" type="button" disabled aria-label="Next frame">▶</button>
-      <label class="inline" for="speed">Speed</label>
-      <input id="speed" type="range" min="1" max="20" value="4" aria-label="Frames per second">
-      <span id="speed-val" class="num">4 fps</span>
-    </div>
-    <canvas id="timeline" width="640" height="46" aria-label="Exposure timeline"></canvas>
-
-    <section id="context" class="context" hidden aria-live="polite"></section>
-
-    <div class="controls">
-      <fieldset>
-        <legend>Field of view</legend>
-        <div id="zooms" class="chips"></div>
-      </fieldset>
-
-      <fieldset>
-        <legend>Wavelength</legend>
-        <div id="bands" class="chips"></div>
-        <div class="row tight">
-          <label class="inline" for="wmin">Custom</label>
-          <input id="wmin" type="number" min="0.75" max="5" step="0.05" value="0.75">
-          <span>to</span>
-          <input id="wmax" type="number" min="0.75" max="5" step="0.05" value="5">
-          <span>µm</span>
-          <button id="wapply" type="button">Apply</button>
+      <div class="row">
+        <div>
+          <label for="start">From</label>
+          <input id="start" type="date" required>
         </div>
-      </fieldset>
-
-      <fieldset>
-        <legend>Frames</legend>
-        <div class="row tight" id="group-row">
-          <label class="inline" for="group">One frame per</label>
-          <select id="group">
-            <option value="exposure">exposure</option>
-            <option value="day">day</option>
-            <option value="pass">survey pass (~6 months apart)</option>
-          </select>
-        </div>
-        <p id="group-note" class="hint">Comparing over time uses one frame per epoch.
-          <button type="button" id="group-explore" class="link">Switch to Explore wavelengths</button> to step through exposures, days or survey passes.</p>
-        <div class="row tight">
-          <label class="inline" for="mode">Show</label>
-          <select id="mode">
-            <option value="image">images</option>
-            <option value="diff">difference from the average</option>
-          </select>
-        </div>
-      </fieldset>
-
-      <fieldset>
-        <legend>Display</legend>
-        <div class="row tight">
-          <label class="inline" for="stretch">Stretch</label>
-          <select id="stretch">
-            <option value="asinh">asinh</option>
-            <option value="sqrt">square root</option>
-            <option value="linear">linear</option>
-          </select>
-          <label class="check"><input id="invert" type="checkbox"> Invert</label>
-          <label class="check"><input id="smooth" type="checkbox" checked> Smooth</label>
-          <label class="check"><input id="cross" type="checkbox" checked> Crosshair</label>
-        </div>
-        <div class="row tight">
-          <label class="inline" for="white">Brightness</label>
-          <input id="white" type="range" min="900" max="1000" value="995" aria-label="White point percentile">
-        </div>
-      </fieldset>
-    </div>
-
-    <div id="info" class="info"></div>
-
-    <section id="measure" class="measure">
-      <h2>Measure an object</h2>
-      <p id="measure-hint" class="hint"></p>
-      <div id="measure-body" hidden>
-        <p id="measure-summary" class="summary"></p>
-        <div id="measure-legend" class="legend"></div>
-        <figure>
-          <figcaption><b>Spectrum</b> · brightness at each wavelength, one colour per survey pass</figcaption>
-          <canvas id="spec-chart" aria-label="Spectrum of the selected object"></canvas>
-        </figure>
-        <figure id="lc-block">
-          <figcaption><b>Brightness over time</b> · each exposure compared with this object's average at the same wavelength.
-            In each pass the dots run from band 1 (left) to band 6; the diamond is all bands together.</figcaption>
-          <canvas id="lc-chart" aria-label="Brightness of the selected object over time"></canvas>
-        </figure>
-        <p id="measure-method" class="hint"></p>
-        <div class="row tight">
-          <button id="measure-link" type="button">Copy link to this object</button>
-          <button id="measure-csv" type="button">Download measurements (CSV)</button>
-          <button id="measure-clear" type="button">Clear</button>
+        <div>
+          <label for="end">To</label>
+          <input id="end" type="date" required>
         </div>
       </div>
-      <div id="chart-tip" class="tip" hidden></div>
+      <p class="hint">SPHEREx survey data begins <span id="date-min"></span>.</p>
+
+      <p id="form-error" class="error" role="alert" hidden></p>
+      <button id="load" type="submit" class="primary">Load images</button>
+
+      <div id="progress" hidden>
+        <div class="bar-track"><div id="bar-fill"></div></div>
+        <p id="progress-text" class="hint"></p>
+      </div>
+    </form>
+
+    <section class="viewer">
+      <div class="views" role="radiogroup" aria-label="What to look at">
+        <button id="view-compare" type="button" role="radio" aria-checked="true" class="on">
+          <span class="mark" aria-hidden="true"></span>
+          <span class="text"><b>Compare over time</b><small>Same wavelengths in every frame</small></span>
+        </button>
+        <button id="view-explore" type="button" role="radio" aria-checked="false">
+          <span class="mark" aria-hidden="true"></span>
+          <span class="text"><b>Explore wavelengths</b><small>Each frame at its own wavelength</small></span>
+        </button>
+      </div>
+      <div class="plate">
+        <div class="stage">
+          <canvas id="view" width="640" height="640" aria-label="SPHEREx image animation"></canvas>
+          <div id="empty" class="empty">Enter coordinates and press <b>Load images</b>.</div>
+          <svg class="stage-art" viewBox="0 0 400 400" aria-hidden="true">
+            <g fill="none" stroke="#f1efe9">
+              <circle cx="200" cy="200" r="64" stroke-opacity="0.16"/>
+              <circle cx="200" cy="200" r="128" stroke-opacity="0.11"/>
+              <circle class="turn" cx="200" cy="200" r="186" stroke-opacity="0.2" stroke-dasharray="1 9"/>
+              <path d="M200 0v136M200 264v136M0 200h136M264 200h136" stroke-opacity="0.08"/>
+            </g>
+            <path d="M200 183v-11M200 217v11M183 200h-11M217 200h11" stroke="#f2b441" stroke-width="1.4"/>
+          </svg>
+          <div id="frame-label" class="tag tl"></div>
+          <div id="readout" class="tag bl"></div>
+          <div id="compass" class="tag tr" hidden>N ↑ &nbsp; E ←</div>
+        </div>
+      </div>
+
+      <div class="transport">
+        <button id="play" type="button" disabled aria-label="Play or pause">Pause</button>
+        <button id="prev" type="button" disabled aria-label="Previous frame">◀</button>
+        <input id="frame" type="range" min="0" max="0" value="0" disabled aria-label="Frame">
+        <button id="next" type="button" disabled aria-label="Next frame">▶</button>
+        <label class="inline" for="speed">Speed</label>
+        <input id="speed" type="range" min="1" max="20" value="4" aria-label="Frames per second">
+        <span id="speed-val" class="num">4 fps</span>
+      </div>
+      <canvas id="timeline" width="640" height="46" aria-label="Exposure timeline"></canvas>
+
+      <section id="context" class="context" hidden aria-live="polite"></section>
+
+      <div class="controls">
+        <fieldset>
+          <legend>Field of view</legend>
+          <div id="zooms" class="chips"></div>
+        </fieldset>
+
+        <fieldset>
+          <legend>Wavelength</legend>
+          <div id="bands" class="chips"></div>
+          <div class="row tight">
+            <label class="inline" for="wmin">Custom</label>
+            <input id="wmin" type="number" min="0.75" max="5" step="0.05" value="0.75">
+            <span>to</span>
+            <input id="wmax" type="number" min="0.75" max="5" step="0.05" value="5">
+            <span>µm</span>
+            <button id="wapply" type="button">Apply</button>
+          </div>
+        </fieldset>
+
+        <fieldset>
+          <legend>Frames</legend>
+          <div class="row tight" id="group-row">
+            <label class="inline" for="group">One frame per</label>
+            <select id="group">
+              <option value="exposure">exposure</option>
+              <option value="day">day</option>
+              <option value="pass">survey pass (~6 months apart)</option>
+            </select>
+          </div>
+          <p id="group-note" class="hint">Comparing over time uses one frame per epoch.
+            <button type="button" id="group-explore" class="link">Switch to Explore wavelengths</button> to step through exposures, days or survey passes.</p>
+          <div class="row tight">
+            <label class="inline" for="mode">Show</label>
+            <select id="mode">
+              <option value="image">images</option>
+              <option value="diff">difference from the average</option>
+            </select>
+          </div>
+        </fieldset>
+
+        <fieldset>
+          <legend>Display</legend>
+          <div class="row tight">
+            <label class="inline" for="stretch">Stretch</label>
+            <select id="stretch">
+              <option value="asinh">asinh</option>
+              <option value="sqrt">square root</option>
+              <option value="linear">linear</option>
+            </select>
+            <label class="check"><input id="invert" type="checkbox"> Invert</label>
+            <label class="check"><input id="smooth" type="checkbox" checked> Smooth</label>
+            <label class="check"><input id="cross" type="checkbox" checked> Crosshair</label>
+          </div>
+          <div class="row tight">
+            <label class="inline" for="white">Brightness</label>
+            <input id="white" type="range" min="900" max="1000" value="995" aria-label="White point percentile">
+          </div>
+        </fieldset>
+      </div>
+
+      <div id="info" class="info"></div>
+
+      <section id="measure" class="measure">
+        <h2>Measure an object</h2>
+        <p id="measure-hint" class="hint"></p>
+        <div id="measure-body" hidden>
+          <p id="measure-summary" class="summary"></p>
+          <div id="measure-legend" class="legend"></div>
+          <figure>
+            <figcaption><b>Spectrum</b> Brightness at each wavelength, one colour per survey pass.</figcaption>
+            <canvas id="spec-chart" aria-label="Spectrum of the selected object"></canvas>
+          </figure>
+          <figure id="lc-block">
+            <figcaption><b>Brightness over time</b> Each exposure compared with this object's average at the same wavelength.
+              In each pass the dots run from band 1 (left) to band 6; the diamond is all bands together.</figcaption>
+            <canvas id="lc-chart" aria-label="Brightness of the selected object over time"></canvas>
+          </figure>
+          <section id="insight" class="insight" hidden aria-live="polite">
+            <div class="insight-head">
+              <h3>AI reading</h3>
+              <span id="insight-model" class="insight-model"></span>
+              <button id="insight-again" type="button" hidden>Analyze again</button>
+            </div>
+            <p class="insight-note"><b>AI can make mistakes.</b> This is an automated interpretation of the measurements above, not a verified result. To check it or analyse the data yourself, use the charts and the <b>Download measurements (CSV)</b> button below.</p>
+            <p id="insight-status" class="insight-status" hidden></p>
+            <button id="insight-start" type="button" class="primary" hidden>Explain these measurements</button>
+            <div id="insight-body"></div>
+          </section>
+          <p id="measure-method" class="hint"></p>
+          <div class="row tight">
+            <button id="measure-link" type="button">Copy link to this object</button>
+            <button id="measure-csv" type="button">Download measurements (CSV)</button>
+            <button id="measure-clear" type="button">Clear</button>
+          </div>
+        </div>
+        <div id="chart-tip" class="tip" hidden></div>
+      </section>
     </section>
-  </section>
 
-  <aside id="period" class="panel period" aria-live="polite">
-    <h2 id="period-title">Period search</h2>
-    <div id="period-body"></div>
-    <div id="period-charts" hidden>
-      <figure>
-        <figcaption><b>Brightness over time</b><span class="keys"><span class="key"><i class="dot" style="background:#3987e5"></i>nightly mean</span><span class="key"><i class="line" style="background:#d95926"></i>fitted sinusoid</span></span></figcaption>
-        <canvas id="period-lc" aria-label="Nightly brightness with the fitted sinusoid"></canvas>
-      </figure>
-      <figure>
-        <figcaption><b>Which period fits best</b><span class="keys"><span class="key"><i class="line" style="background:#3987e5"></i>fit quality</span><span class="key"><i class="band"></i>1σ range</span></span></figcaption>
-        <canvas id="period-scan" aria-label="Fit quality against trial period"></canvas>
-      </figure>
-    </div>
-    <div id="period-tip" class="tip" hidden></div>
-  </aside>
+    <aside id="period" class="panel period" aria-live="polite">
+      <h2 id="period-title">Period search</h2>
+      <div id="period-body"></div>
+      <div id="period-charts" hidden>
+        <figure>
+          <figcaption><b>Brightness over time</b><span class="keys"><span class="key"><i class="dot" style="background:#3987e5"></i>nightly mean</span><span class="key"><i class="line" style="background:#d95926"></i>fitted sinusoid</span></span></figcaption>
+          <canvas id="period-lc" aria-label="Nightly brightness with the fitted sinusoid"></canvas>
+        </figure>
+        <figure>
+          <figcaption><b>Which period fits best</b><span class="keys"><span class="key"><i class="line" style="background:#3987e5"></i>fit quality</span><span class="key"><i class="band"></i>1σ range</span></span></figcaption>
+          <canvas id="period-scan" aria-label="Fit quality against trial period"></canvas>
+        </figure>
+      </div>
+      <div id="period-tip" class="tip" hidden></div>
+    </aside>
+  </div>
 </main>
 
+<section class="hero" aria-label="About Ingress">
+  <div class="hero-sky" aria-hidden="true">
+    <div class="hero-star">
+      <span class="star-glow"></span>
+      <span class="star-disc">
+        <svg viewBox="0 0 200 200" preserveAspectRatio="none">
+          <filter id="granules" x="0" y="0" width="100%" height="100%">
+            <feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="3" seed="7"/>
+            <feColorMatrix values="0 0 0 0 0.35  0 0 0 0 0.16  0 0 0 0 0.02  0.9 0.9 0.9 0 -0.95"/>
+          </filter>
+          <rect width="200" height="200" filter="url(#granules)"/>
+        </svg>
+      </span>
+      <span class="planet"></span>
+    </div>
+  </div>
+
+  <div class="hero-copy">
+    <p>SPHEREx photographs the whole sky over and over. Ingress lines up every visit to one patch, so whatever moved or changed stands out.</p>
+    <h2>Watch the sky change</h2>
+  </div>
+</section>
+
+<section class="story" id="story" aria-label="How SPHEREx sees the sky">
+  <div class="story-pin">
+    <canvas id="story-canvas" aria-hidden="true"></canvas>
+    <div class="story-prog" aria-hidden="true"><i></i></div>
+    <div class="chapters">
+      <article class="chapter">
+        <p class="idx">01 / 03</p>
+        <h2>The whole sky, twice a year</h2>
+        <p>SPHEREx circles Earth from pole to pole, scanning one thin strip of sky on every orbit. In about six months the strips close into a complete map, and the survey starts over.</p>
+        <p class="stat"><b data-stat="cover">0%</b> of the sky scanned</p>
+      </article>
+      <article class="chapter">
+        <p class="idx">02 / 03</p>
+        <h2>Infrared light, split 102 ways</h2>
+        <p>Six detectors cover 0.75 to 5.0 µm. A filter that changes colour across each one sorts the light into 102 narrow channels, far past what eyes can see.</p>
+        <p class="stat"><b data-stat="wave">0.75 µm</b> channel <span data-stat="chan">1</span> of 102</p>
+      </article>
+      <article class="chapter">
+        <p class="idx">03 / 03</p>
+        <h2>Same patch, different night</h2>
+        <p>Line up every visit to one patch and play them back. Stars hold still. Whatever moves or changes brightness gives itself away.</p>
+        <p class="stat"><b data-stat="pass">Pass 1</b> <span data-stat="date">2025-05</span></p>
+      </article>
+    </div>
+  </div>
+</section>
+
 <footer>
-  Images: NASA SPHEREx spectral images (Level 2) from the
-  <a href="https://irsa.ipac.caltech.edu/Missions/spherex.html">NASA/IPAC Infrared Science Archive</a>.
-  Link to any field with <code>?ra=&lt;deg&gt;&amp;dec=&lt;deg&gt;&amp;fov=&lt;arcmin&gt;</code>.
+  <p>
+    Images: NASA SPHEREx spectral images (Level 2) from the
+    <a href="https://irsa.ipac.caltech.edu/Missions/spherex.html">NASA/IPAC Infrared Science Archive</a>.
+    Link to any field with <code>?ra=&lt;deg&gt;&amp;dec=&lt;deg&gt;&amp;fov=&lt;arcmin&gt;</code>.
+  </p>
+  <div class="wordmark" aria-hidden="true">Ingress</div>
 </footer>
 
 <div id="modal-backdrop" class="modal-backdrop" hidden>
@@ -302,6 +391,8 @@
         <dd>Estimated from how much the surrounding sky scatters. They do not include every instrumental effect.</dd>
         <dt>Moving and very bright objects</dt>
         <dd>The measuring ring follows an object that moves between passes. For a star too bright to measure at its centre, Ingress measures the halo of light around it and says so: changes over time remain reliable, the flux values do not.</dd>
+        <dt>AI reading</dt>
+        <dd>An AI model can be sent these measurements and writes, in plain words, what each one means and whether it is significant, with the figures under <b>Technical details</b>. It explains the numbers; it does not produce them, and it can be wrong. It appears only when the site has been set up with an OpenAI key.</dd>
         <dt>Copy link, Download, Clear</dt>
         <dd>Copy a link that reopens this field with this object selected; save every measurement as a spreadsheet file (CSV); remove the selection.</dd>
       </dl>
@@ -487,11 +578,14 @@
   </section>
 </div>
 
-<script src="app.js"></script>
-<script src="compare.js"></script>
-<script src="measure.js"></script>
-<script src="period.js"></script>
-<script src="dialogs.js"></script>
-<script>Measure.init(); Period.init();</script>
+<script src="app.js?v=13474984"></script>
+<script src="compare.js?v=dc7e86f9"></script>
+<script src="measure.js?v=0af3ddc6"></script>
+<script src="insight.js?v=d954075c"></script>
+<script src="period.js?v=7e635727"></script>
+<script src="dialogs.js?v=65f7dbc8"></script>
+<script>Measure.init(); Period.init(); Insight.init();</script>
+<script src="sky.js?v=661975b6"></script>
+<script src="story.js?v=4a8649d9"></script>
 </body>
 </html>
