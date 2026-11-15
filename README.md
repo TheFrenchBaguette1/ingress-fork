@@ -54,7 +54,8 @@ data already in the browser.
 /?ra=269.4464&dec=4.7686&fov=5&start=2025-04-01&end=2026-11-15&band=D3&zoom=2&group=day
 ```
 
-`ra` and `dec` (degrees) are required; the rest are optional.
+`ra` and `dec` (degrees) are required; the rest are optional. `obj` selects
+an object to measure.
 
 ## How it works
 
@@ -95,6 +96,14 @@ browser (`frontend/measure.js`):
 
 The summary line reports the largest change between two passes and calls it
 variable at 5σ or more.
+
+A measured object can be shared: clicking one adds `&obj=<ra>,<dec>` to the
+address, and opening that link selects and measures it again.
+
+**Validation** ([details](validation/README.md)): fluxes of ordinary stars
+come out 4–13% below 2MASS and AllWISE, as expected without an aperture
+correction, and the period fitted to R Draconis is 245 days against a
+catalogued 245.6.
 
 ## Test targets
 
