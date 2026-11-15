@@ -157,3 +157,12 @@ body.modal-open { overflow: hidden; }
 .modal-body .sources li { margin-bottom: 7px; }
 @media (prefers-reduced-motion: reduce) { .modal, .modal-backdrop { transition: none; } }
 @media (max-width: 560px) { .modal-backdrop { padding: 8px; } .modal { max-height: 94vh; } .modal-body { padding: 4px 14px 16px; } }
+
+/* Methodology: denser, with equations and a results table */
+.top-actions { flex-wrap: wrap; justify-content: flex-end; }
+.modal-body.method li { margin-bottom: 8px; }
+.modal-body ol { margin: 6px 0; padding-left: 22px; }
+.modal-body .eq { margin: 10px 0; padding: 8px 12px; background: var(--bg); border-radius: 6px; font-family: "Cambria Math", "STIX Two Math", Georgia, serif; font-size: 15.5px; overflow-x: auto; white-space: nowrap; }
+.modal-body table { border-collapse: collapse; margin: 10px 0; font-variant-numeric: tabular-nums; }
+.modal-body th { text-align: left; font-weight: 500; color: var(--dim); padding: 4px 18px 4px 0; border-bottom: 1px solid var(--line); }
+.modal-body td { padding: 4px 18px 4px 0; border-bottom: 1px solid var(--line); }

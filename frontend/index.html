@@ -12,8 +12,9 @@
   <h1>Ingress</h1>
   <p>Blink SPHEREx infrared images of any patch of sky to spot things that move or vary.</p>
   <nav class="top-actions" aria-label="Information">
-    <button type="button" id="open-help" aria-haspopup="dialog">Help</button>
-    <button type="button" id="open-about" aria-haspopup="dialog">About</button>
+    <button type="button" data-dialog="dialog-help" aria-haspopup="dialog">Help</button>
+    <button type="button" data-dialog="dialog-about" aria-haspopup="dialog">About</button>
+    <button type="button" data-dialog="dialog-method" aria-haspopup="dialog">Methodology</button>
   </nav>
 </header>
 
@@ -320,6 +321,8 @@
       <h3>How it works, briefly</h3>
       <p>For the position you enter, Ingress asks the SPHEREx archive which exposures cover it, reads only the needed part of each image, places them all on one north-up grid, and sends them to your browser, where the frames and measurements are computed. No account is needed and the site sets no cookies.</p>
 
+      <p>The exact procedures, thresholds and checks are set out under <button type="button" class="link" data-dialog="dialog-method">Methodology</button>.</p>
+
       <h3>Limits to keep in mind</h3>
       <ul>
         <li>SPHEREx's pixels are 6.15″ across, so close pairs of objects blend and small motions are subtle.</li>
@@ -359,6 +362,110 @@
       <p class="quote">This publication makes use of data products from the Two Micron All Sky Survey, which is a joint project of the University of Massachusetts and the Infrared Processing and Analysis Center/California Institute of Technology, funded by the National Aeronautics and Space Administration and the National Science Foundation.</p>
       <p>This site uses services of the NASA/IPAC Infrared Science Archive, operated by the California Institute of Technology for NASA, and data from the Wide-field Infrared Survey Explorer, a NASA mission.</p>
       <p class="note">Ingress was built for the 2026 NASA Space Apps Challenge. It is an independent project and is not operated or endorsed by NASA, JPL, Caltech or IRSA.</p>
+    </div>
+  </section>
+
+  <section id="dialog-method" class="modal" role="dialog" aria-modal="true" aria-labelledby="method-title" tabindex="-1" hidden>
+    <header><h2 id="method-title">Methodology</h2><button type="button" class="modal-close" aria-label="Close">×</button></header>
+    <div class="modal-body method">
+      <p class="lead">Every image and number on this site is derived from SPHEREx spectral images by the steps below. Thresholds are stated so that results can be reproduced and their limits judged.</p>
+
+      <h3>1. Data</h3>
+      <ul>
+        <li><b>Product.</b> SPHEREx Level 2 spectral images (calibrated single exposures, 2040 × 2040 pixels of 6.15″, surface brightness in MJy sr⁻¹) from IRSA: the Data Release 1 and Quick Release 3 collections, wide and deep surveys. Where an exposure is in more than one collection, DR1 is used.</li>
+        <li><b>Spectral sampling.</b> Each detector sits behind a linear variable filter, so the wavelength recorded depends on position on the detector. One exposure therefore gives each sky position a single wavelength; a spectrum is assembled from many exposures. The six detectors cover 0.75–1.11, 1.10–1.63, 1.63–2.42, 2.42–3.82, 3.81–4.42 and 4.41–5.00 µm at resolving powers of about 39, 41, 41, 35, 112 and 128.</li>
+        <li><b>Selection.</b> IRSA's Simple Image Access service returns the exposures whose footprint contains the requested position within the requested dates. If there are more than 900, an evenly spaced subset in time order is used and the page says so.</li>
+        <li><b>Reading.</b> For each exposure only the detector rows covering the field are read from the IMAGE and FLAGS extensions. For a test exposure this was checked to give pixel-identical results to IRSA's own cutout service.</li>
+      </ul>
+
+      <h3>2. From exposure to image</h3>
+      <ul>
+        <li><b>Flags.</b> Pixels with any of these pipeline flags are discarded: TRANSIENT, SUR_ERROR, NONFUNC, MISSING_DATA, HOT, COLD, PERSIST, SNOWBALL. Flags that mark real sky signal or milder conditions (SOURCE, the ghost flags, HALO, DICHROIC, NONLINEAR, OUTLIER) are kept.</li>
+        <li><b>Saturation.</b> Pixels flagged OVERFLOW, and discarded pixels within six detector pixels of them, are set to the brightest unsaturated value in the region read. This is for display only; it is detected later and never measured as flux.</li>
+        <li><b>Projection.</b> Each exposure is resampled onto one gnomonic (TAN) grid centred on the requested position, north up, with pixels of max(3.075″, field of view ⁄ 240). The mapping uses the astrometric solution in each file's header, including its SIP distortion terms. Ingress does not refine the astrometry.</li>
+        <li><b>Interpolation.</b> Bilinear, weighted by the mask: with <i>g</i> = 1 for good pixels, the output is interp(<i>g·I</i>) ⁄ interp(<i>g</i>), kept where interp(<i>g</i>) &gt; 0.6. Surface brightness is preserved; noise becomes correlated between neighbouring output pixels, which is allowed for in section 6.</li>
+        <li><b>Background.</b> The median of the field is subtracted from each exposure, and its noise is estimated as 1.4826 × the median absolute deviation. This removes zodiacal light, which is smooth on these scales, without relying on a model. It also removes any real emission that is uniform across the field, and biases the level where bright extended emission fills much of the field.</li>
+        <li><b>Wavelength.</b> The wavelength and bandwidth at the field centre are read from each file's wavelength lookup table by bilinear interpolation at the detector position, which reproduces Astropy's evaluation of the same table. The wavelength elsewhere in the field is taken as linear, from the gradient measured between the field edges.</li>
+        <li><b>Time.</b> Dates are the mid-exposure UTC times from the headers. No barycentric correction is applied; it is at most minutes and immaterial for the timescales compared here.</li>
+      </ul>
+
+      <h3>3. Epochs</h3>
+      <p>SPHEREx returns to most positions about every six months and observes them for days to weeks. Exposures separated by more than 30 days belong to different epochs. Near the ecliptic poles coverage is continuous; an unbroken run longer than 90 days is cut into equal parts of at most about 45 days.</p>
+
+      <h3>4. Comparing the same spectral region over time</h3>
+      <p><b>The problem.</b> For a source with flux density <i>F</i>(λ), two exposures at λ₁ and λ₂ differ by <i>F</i>(λ₁) − <i>F</i>(λ₂) even if the source is constant. Averaging all exposures of a detector band per epoch does not remove this, because each epoch samples the band at different wavelengths with different weights.</p>
+      <p><b>The construction.</b></p>
+      <ol>
+        <li>Each detector band is divided into six equal wavelength intervals (slices), 36 in total.</li>
+        <li>An exposure is used if it covers at least half the field and its noise is no more than three times the median for its detector. The second condition excludes the very noisy exposures found at the ends of a detector's range, which would otherwise dominate an equally weighted average.</li>
+        <li>Only slices observed in every epoch are kept. If that leaves fewer than a quarter of the median number of slices per epoch, the epoch with the fewest slices is dropped and the test repeated. Dropped epochs are listed with the reason.</li>
+        <li>For epoch <i>e</i> and pixel <i>p</i>, each kept slice <i>s</i> is averaged over its exposures, then the slices are averaged with equal weight:
+          <p class="eq"><i>I<sub>e</sub></i>(<i>p</i>) = (1 ⁄ <i>S</i>) Σ<sub><i>s</i></sub> ⟨<i>I</i>(<i>p</i>)⟩<sub><i>e,s</i></sub></p>
+          Every epoch therefore has the same effective spectral response at the resolution of a slice.</li>
+        <li>Outliers: with at least five values at a pixel, a value further than 6σ from their median (σ = 1.4826 × MAD) is discarded, except that a slice is never emptied unless the value is also beyond 8(|median| + σ). The exception protects the centres of stars, whose pixel values legitimately vary as the star falls on different parts of a 6.15″ pixel.</li>
+        <li>A pixel is shown for an epoch only if at least 85% of the slices contributed.</li>
+      </ol>
+      <p><b>If it cannot be done.</b> With fewer than two epochs sharing any slice, no comparison is shown: the page states this and displays one labelled epoch.</p>
+      <p><b>Difference images</b> are <i>I<sub>e</sub></i> minus the mean over epochs, evaluated only where every epoch has data. In the Explore view the same subtraction is applied to frames of different wavelength and is labelled as not isolating variability.</p>
+      <p><b>Diagnostics reported with each comparison.</b></p>
+      <ul>
+        <li><b>Mean wavelength</b> per epoch, as the mean over slices of the mean wavelength within each slice.</li>
+        <li><b>Offset.</b> Up to 40 of the brightest unsaturated stars (local maxima more than 12σ above the median) are centroided in each epoch by intensity-weighted first moments in a 9 × 9 pixel window. An epoch's offset is the median displacement of its stars from their mean positions. A warning is given above 1.5″, a quarter of a detector pixel.</li>
+        <li><b>Star width.</b> The second moment of the same stars, relative to the mean over epochs. A warning is given when epochs differ by more than 10%.</li>
+        <li><b>Shared field.</b> The fraction of pixels with data in every epoch; a warning is given below 80%.</li>
+      </ul>
+      <p>Offsets and widths are measured, not corrected. At least eight stars are required; otherwise the page says they could not be measured.</p>
+      <p><b>What remains unmatched.</b> Within a slice (about a sixth of a band) the epochs' wavelengths still differ, by the amount shown in the table, so a source with strong spectral structure can show a small spurious change. The point-spread function varies with wavelength and detector position and the spacecraft orientation differs between epochs, so bright stars leave residuals in difference images. Objects that move appreciably within an epoch are smeared.</p>
+
+      <h3>5. Frames in the Explore view and display scaling</h3>
+      <ul>
+        <li><b>Frames.</b> A frame is one exposure, or the average of the exposures in one UTC day or one epoch, with values beyond 6σ of the per-pixel median discarded when there are at least five. No wavelength matching is applied; the frame label gives the wavelength or range.</li>
+        <li><b>Scaling.</b> One display range is used for all frames of an animation, so apparent changes are not produced by rescaling. Black is the median minus 2σ of the pixels in view; white is a chosen percentile, 99.5 by default. Difference images use a symmetric linear range.</li>
+        <li><b>Stretch.</b> With <i>t</i> the value scaled to 0–1: linear <i>t</i>; square root √<i>t</i>; asinh(10<i>t</i>) ⁄ asinh(10).</li>
+      </ul>
+
+      <h3>6. Photometry of a selected object</h3>
+      <p><b>Aperture flux.</b> For each exposure, pixels whose centres lie within 9.5″ of the object are summed and the sky level, the median in an annulus from 22″ to 34″, is subtracted:</p>
+      <p class="eq"><i>F</i> = (Σ<sub>ap</sub> <i>I</i> − <i>N</i> · median<sub>sky</sub>) · Ω,  Ω = (pixel scale ⁄ 206 265″)² sr</p>
+      <p>with <i>F</i> in mJy (1 MJy = 10⁹ mJy). The measurement is discarded if fewer than 85% of the aperture pixels or half of the annulus pixels have data. No aperture correction is applied.</p>
+      <p><b>Uncertainty.</b></p>
+      <p class="eq">σ<sub><i>F</i></sub> = σ<sub>sky</sub> · √(<i>N</i> (1 + <i>N</i> ⁄ <i>N</i><sub>sky</sub>)) · <i>c</i> · Ω,  <i>c</i> = max(1, 6.15″ ⁄ pixel scale)</p>
+      <p>σ<sub>sky</sub> is 1.4826 × MAD in the annulus, the second term under the root is the uncertainty of the sky level, and <i>c</i> accounts for noise shared between resampled pixels. This is a background-limited estimate. It omits photon noise from the source itself, flat-field and calibration errors, and the variation of the measured flux with a star's position within a pixel, so it understates the error for bright sources.</p>
+      <p><b>Wavelength</b> is evaluated at the object's position from the field-centre value and gradient.</p>
+      <p><b>Moving objects.</b> In each epoch's stacked image the aperture is re-centred on the intensity-weighted centroid near the selected point (at most four iterations), provided the peak exceeds 4σ and the centre stays within 18″ of the selected point.</p>
+      <p><b>Saturated stars.</b> A measurement is marked saturated if four or more aperture pixels carry the filled value. If more than 30% of an object's measurements are saturated, all are replaced by a halo measurement: with <i>r</i><sub>sat</sub> the 90th percentile over exposures of the saturated core's equivalent radius, the flux is the median surface brightness in the ring <i>r</i><sub>sat</sub> + 9″ to <i>r</i><sub>sat</sub> + 24″, times the ring's area, above the sky in <i>r</i><sub>sat</sub> + 45″ to + 60″. The median rejects neighbouring stars and diffraction spikes; its uncertainty carries the factor 1.2533 for a median. Halo flux is proportional to the star's flux as long as the outer point-spread function is stable, so ratios over time are meaningful. It is not a total flux, and its dependence on wavelength is not calibrated.</p>
+      <p><b>Brightness over time.</b> To remove the spectrum, each measurement is divided by the median of all unsaturated measurements, from any epoch, within 0.6 of a bandwidth of its wavelength:</p>
+      <p class="eq"><i>r<sub>i</sub></i> = <i>F<sub>i</sub></i> ⁄ median{ <i>F<sub>j</sub></i> : |λ<sub><i>j</i></sub> − λ<sub><i>i</i></sub>| ≤ 0.6 Δλ<sub><i>i</i></sub> }</p>
+      <p>This requires measurements from at least two epochs in that window and a reference above five times their median uncertainty. Values of <i>r</i> are combined per epoch, and per epoch and band, by inverse-variance weighted mean. The uncertainty of each mean is the larger of its formal error and the standard error from the scatter of its members (three or more), with 1% added in quadrature for calibration stability.</p>
+      <p><b>Variability statement.</b> Among epochs with at least five usable measurements, the pair with the largest |<i>r<sub>a</sub></i> − <i>r<sub>b</sub></i>| ⁄ √(σ<sub><i>a</i></sub>² + σ<sub><i>b</i></sub>²) is reported: "variable" at 5 or more, "possibly variable" from 3. Because the largest of several pairs is chosen and the uncertainties are incomplete, the 5σ threshold is deliberately conservative and the 3σ level should be read as a prompt to look closer, not as a detection.</p>
+
+      <h3>7. Validation</h3>
+      <p>Both checks run the page's own code in an automated browser (script and inputs are in the project's <code>validation</code> folder).</p>
+      <p><b>Flux scale.</b> Eight isolated stars (J = 13.7–15.0) in the WISE 0855−0714 field were compared with the 2MASS Point Source Catalog and the AllWISE Source Catalog. The Ingress value for a filter is the mean of its measurements in a top-hat window (J 1.17–1.33, H 1.51–1.79, K<sub>s</sub> 2.03–2.30, W1 3.0–3.8, W2 4.1–5.0 µm). Catalogue magnitudes were converted with zero-magnitude fluxes of 1594, 1024 and 666.7 Jy (<a href="https://ui.adsabs.harvard.edu/abs/2003AJ....126.1090C/abstract" target="_blank" rel="noopener">Cohen et al. 2003</a>) and 309.54 and 171.787 Jy (<a href="https://ui.adsabs.harvard.edu/abs/2011ApJ...735..112J/abstract" target="_blank" rel="noopener">Jarrett et al. 2011</a>).</p>
+      <table>
+        <thead><tr><th>Filter</th><th>Median Ingress ⁄ catalogue</th><th>Star-to-star scatter</th></tr></thead>
+        <tbody>
+          <tr><td>J</td><td>0.92</td><td>0.06</td></tr>
+          <tr><td>H</td><td>0.93</td><td>0.04</td></tr>
+          <tr><td>K<sub>s</sub></td><td>0.88</td><td>0.05</td></tr>
+          <tr><td>W1</td><td>0.87</td><td>0.09</td></tr>
+          <tr><td>W2</td><td>0.96</td><td>0.13</td></tr>
+        </tbody>
+      </table>
+      <p>Fluxes are 4–13% low, the sign and size expected without an aperture correction. The sample is small, the filter model is a top hat, and the catalogue epochs differ from SPHEREx's.</p>
+      <p><b>Time series.</b> R Draconis, a Mira variable that saturates SPHEREx, was measured by the halo method. Nightly means of <i>r</i> on 167 nights spanning 518 days were fitted with a sinusoid at trial periods from 120 to 500 days. The best period is <b>245 days</b> (242–249 at Δχ² = 1 after scaling to unit reduced χ²), against a catalogued 245.6 days (<a href="http://www.sai.msu.su/gcvs/gcvs/" target="_blank" rel="noopener">General Catalogue of Variable Stars</a>). The data cover about two cycles, and a single sinusoid accounts for half of the variance, as expected for a light curve that is not sinusoidal and whose amplitude depends on wavelength.</p>
+
+      <h3>8. Summary of limitations</h3>
+      <ul>
+        <li>Angular resolution is set by 6.15″ pixels: blended sources are measured together, and motions much smaller than a pixel between epochs are hard to detect. Ingress has not measured its own detection limit for motion.</li>
+        <li>Wavelength matching is at the level of a slice, not exact; no colour correction is made.</li>
+        <li>No astrometric refinement, point-spread-function matching or aperture correction is applied; the first two are measured and reported.</li>
+        <li>Uncertainties are background-limited estimates and are incomplete for bright sources.</li>
+        <li>Per-exposure median subtraction removes spatially uniform signal.</li>
+        <li>In fields with more than 900 exposures a subset is used, which thins wavelength coverage per epoch.</li>
+        <li>Results are quick-look measurements intended to identify candidates. A candidate should be confirmed with the mission's catalogues and independent data before any claim is made.</li>
+      </ul>
+      <p class="note">Data sources, mission papers and acknowledgements are listed under About.</p>
     </div>
   </section>
 </div>

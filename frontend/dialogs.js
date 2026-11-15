@@ -1,5 +1,5 @@
 "use strict";
-/* Help and About: panels that slide in over the page. They close with the
+/* Help, About and Methodology: panels that slide in over the page. They close with the
  * × button, the Escape key, or a click anywhere outside the panel. */
 (() => {
   const backdrop = document.getElementById("modal-backdrop");
@@ -7,9 +7,10 @@
   let open = null, opener = null, closing = null;
 
   function show(id, from) {
-    if (open) hide(true);
+    const returnTo = from; // read before hide() clears state
+    if (open) hide(true, true);
     clearTimeout(closing);
-    opener = from;
+    opener = returnTo;
     open = document.getElementById(id);
     for (const d of backdrop.querySelectorAll(".modal")) d.hidden = d !== open;
     backdrop.hidden = false;
@@ -20,7 +21,7 @@
     open.focus();
   }
 
-  function hide(immediately) {
+  function hide(immediately, swapping) {
     if (!open) return;
     const panel = open;
     open = null;
@@ -29,11 +30,14 @@
     const finish = () => { panel.hidden = true; if (!open) backdrop.hidden = true; };
     clearTimeout(closing);
     if (immediately) finish(); else closing = setTimeout(finish, SLIDE_MS);
-    if (opener) opener.focus();
+    if (opener && !swapping) opener.focus();
   }
 
-  document.getElementById("open-help").addEventListener("click", (ev) => show("dialog-help", ev.currentTarget));
-  document.getElementById("open-about").addEventListener("click", (ev) => show("dialog-about", ev.currentTarget));
+  // Any button carrying data-dialog opens the panel it names. One inside a
+  // panel swaps to another and hands on the button to return focus to.
+  for (const b of document.querySelectorAll("[data-dialog]")) {
+    b.addEventListener("click", () => show(b.dataset.dialog, backdrop.contains(b) ? opener : b));
+  }
   // A press that starts on the dimmed area, outside the panel, closes it.
   backdrop.addEventListener("mousedown", (ev) => {
     if (ev.target !== backdrop) return;
