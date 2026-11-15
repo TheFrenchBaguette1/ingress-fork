@@ -150,7 +150,7 @@ const Period = (() => {
     const ys = [...a.series.filter((s) => !s.clipped).flatMap((s) => [pct(s.rel + s.relErr), pct(s.rel - s.relErr)]), ...curve.map((c) => c[1])];
     const lim = Math.max(10, ...ys.map(Math.abs)) * 1.08;
     const ticks = [];
-    for (let k = 0; k <= 4; k++) { const v = t0 + ((t1 - t0) * k) / 4; ticks.push({ value: v, label: fmtDate(v).slice(0, 7) }); }
+    for (let k = 0; k < 4; k++) { const v = t0 + ((t1 - t0) * (k + 0.5)) / 4; ticks.push({ value: v, label: fmtDate(v).slice(0, 7) }); } // inset so the end labels are not cut off
     let ch = Measure.chart("period-lc", { x: [t0 - pad, t1 + pad], y: [-lim, lim], xTicks: ticks, xLabel: "Date of observation", yLabel: "Change from average (%)", zero: 0 });
     ch.ctx.strokeStyle = MODEL; ch.ctx.lineWidth = 2; ch.ctx.beginPath();
     curve.forEach(([t, v], i) => (i ? ch.ctx.lineTo(ch.X(t), ch.Y(v)) : ch.ctx.moveTo(ch.X(t), ch.Y(v))));
