@@ -136,6 +136,30 @@
     </div>
 
     <div id="info" class="info"></div>
+
+    <section id="measure" class="measure">
+      <h2>Measure an object</h2>
+      <p id="measure-hint" class="hint"></p>
+      <div id="measure-body" hidden>
+        <p id="measure-summary" class="summary"></p>
+        <div id="measure-legend" class="legend"></div>
+        <figure>
+          <figcaption><b>Spectrum</b> · brightness at each wavelength, one colour per survey pass</figcaption>
+          <canvas id="spec-chart" aria-label="Spectrum of the selected object"></canvas>
+        </figure>
+        <figure id="lc-block">
+          <figcaption><b>Brightness over time</b> · each exposure compared with this object's average at the same wavelength.
+            In each pass the dots run from band 1 (left) to band 6; the diamond is all bands together.</figcaption>
+          <canvas id="lc-chart" aria-label="Brightness of the selected object over time"></canvas>
+        </figure>
+        <p id="measure-method" class="hint"></p>
+        <div class="row tight">
+          <button id="measure-csv" type="button">Download measurements (CSV)</button>
+          <button id="measure-clear" type="button">Clear</button>
+        </div>
+      </div>
+      <div id="chart-tip" class="tip" hidden></div>
+    </section>
   </section>
 </main>
 
@@ -146,5 +170,7 @@
 </footer>
 
 <script src="app.js"></script>
+<script src="measure.js"></script>
+<script>Measure.init();</script>
 </body>
 </html>

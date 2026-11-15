@@ -139,6 +139,7 @@ async function load(q) {
   const abort = (state.abort = new AbortController());
   Object.assign(state, { field: null, exposures: [], failed: 0, loading: true, frames: [], frame: 0, zoom: null });
   state.cache.clear();
+  if (window.Measure) Measure.clear();
   showError("");
   $("progress").hidden = false;
   $("bar-fill").style.width = "0";
@@ -359,6 +360,7 @@ function rebuild() {
   $("compass").hidden = !state.frames.length;
   draw();
   drawTimeline();
+  if (window.Measure) Measure.refresh();
 }
 
 // ------------------------------------------------------------ rendering ---
@@ -471,6 +473,7 @@ function draw() {
   ctx.shadowBlur = 4 * u;
   ctx.fillText(bar >= 60 ? `${bar / 60}′` : `${bar}″`, size - 14 * u, size - 22 * u);
   ctx.shadowBlur = 0;
+  if (window.Measure) Measure.overlay(ctx, (i, j) => [((i + 0.5 - x0) / m) * size, (1 - (j + 0.5 - x0) / m) * size], u);
 
   const when = f.t1 - f.t0 < 0.02 ? fmtDateTime(f.t0) + " UTC" : `${fmtDate(f.t0)} → ${fmtDate(f.t1)}`;
   $("frame-label").textContent = `${state.frame + 1}/${state.frames.length} · ${when}`;
@@ -693,6 +696,11 @@ async function init() {
     setBand(`c:${lo}-${hi}`);
   };
   $("view").addEventListener("mousemove", onHover);
+  $("view").addEventListener("click", (ev) => {
+    if (!state.frames.length) return;
+    const r = $("view").getBoundingClientRect(), { m, x0 } = crop();
+    Measure.pickAt(x0 + ((ev.clientX - r.left) / r.width) * m - 0.5, x0 + (1 - (ev.clientY - r.top) / r.height) * m - 0.5);
+  });
   $("view").addEventListener("mouseleave", () => { $("readout").textContent = ""; });
   window.addEventListener("resize", () => { draw(); drawTimeline(); });
   document.addEventListener("keydown", (ev) => {

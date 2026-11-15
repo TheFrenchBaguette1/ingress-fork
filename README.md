@@ -40,6 +40,9 @@ and `nasa-irsa-spherex.s3.amazonaws.com` (image data).
   (about six months apart); shown as images or as the difference from the
   average.
 - Space plays/pauses; the arrow keys step through frames.
+- **Measure an object**: click anything in the image to get its spectrum
+  (one colour per survey pass) and its brightness over time, both with error
+  bars, plus a CSV download.
 
 All exposures of the field are downloaded once. Changing the wavelength
 range, field of view, frame grouping or display settings afterwards works on
@@ -73,6 +76,25 @@ average of the exposures of that pass whose wavelength falls in the band.
 
 Fields with more than 900 exposures (near the ecliptic poles) are sampled
 evenly in time; narrow the date range to see every exposure.
+
+## Measuring brightness
+
+Clicking an object runs aperture photometry on every exposure already in the
+browser (`frontend/measure.js`):
+
+- **Spectrum.** Flux in a 9.5″ aperture against the wavelength of each
+  exposure at that position; sky level and error bars from a surrounding ring.
+- **Brightness over time.** A SPHEREx exposure has one wavelength, so raw
+  flux against time would trace the spectrum, not variability. Each
+  measurement is therefore divided by the median of all measurements at
+  nearly the same wavelength, and the ratios are averaged per pass and band.
+- **Moving objects** are followed: the aperture is re-centred in each pass.
+- **Saturated stars** cannot be measured at their centre. For these the
+  median brightness of a ring just outside the saturated core is used, which
+  tracks changes over time but not the star's total flux.
+
+The summary line reports the largest change between two passes and calls it
+variable at 5σ or more.
 
 ## Updating for new data releases
 
