@@ -19,7 +19,7 @@ const Measure = (() => {
   const PASS_COLORS = ["#3987e5", "#d95926", "#199e70", "#c98500", "#d55181", "#0ca30c", "#9085e9", "#e66767"];
   const OTHER_COLOR = "#8a90a0";
   const DIM = "#8e97ab", GRID = "rgba(236,234,228,0.1)", AXIS = "rgba(236,234,228,0.36)", SURFACE = "#05060a";
-  const CHART_FONT = '10.5px "Geist Mono", ui-monospace, Menlo, monospace';
+  const CHART_FONT = '12px "Geist Mono", ui-monospace, Menlo, monospace';
 
   let pick = null; // {i, j} clicked position in grid pixels
   let result = null;
@@ -232,7 +232,7 @@ const Measure = (() => {
     const ctx = cv.getContext("2d");
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     ctx.clearRect(0, 0, W, H);
-    const box = { l: 56, r: W - 14, t: 30, b: H - 46 };
+    const box = { l: 66, r: W - 16, t: 34, b: H - 54 };
     const X = (v) => box.l + ((v - x[0]) / (x[1] - x[0])) * (box.r - box.l);
     const Y = (v) => box.b - ((v - y[0]) / (y[1] - y[0])) * (box.b - box.t);
     ctx.font = CHART_FONT;
@@ -247,18 +247,18 @@ const Measure = (() => {
       ctx.beginPath(); ctx.moveTo(box.l, Math.round(Y(v)) + 0.5); ctx.lineTo(box.r, Math.round(Y(v)) + 0.5); ctx.stroke();
       ctx.setLineDash([]);
       ctx.fillStyle = DIM;
-      ctx.fillText(fmtTick(v), box.l - 10, Y(v));
+      ctx.fillText(fmtTick(v), box.l - 12, Y(v));
     }
     ctx.textAlign = "center"; ctx.textBaseline = "top";
     ctx.strokeStyle = AXIS;
     for (const t of xTicks) {
       const tx = Math.round(X(t.value)) + 0.5;
       ctx.beginPath(); ctx.moveTo(tx, box.b + 3); ctx.lineTo(tx, box.b + 8); ctx.stroke();
-      ctx.fillStyle = DIM; ctx.fillText(t.label, X(t.value), box.b + 13);
+      ctx.fillStyle = DIM; ctx.fillText(t.label, X(t.value), box.b + 14);
     }
     ctx.fillStyle = DIM;
-    ctx.fillText(xLabel, (box.l + box.r) / 2, H - 14);
-    ctx.save(); ctx.translate(11, (box.t + box.b) / 2); ctx.rotate(-Math.PI / 2); ctx.textBaseline = "middle";
+    ctx.fillText(xLabel, (box.l + box.r) / 2, H - 17);
+    ctx.save(); ctx.translate(13, (box.t + box.b) / 2); ctx.rotate(-Math.PI / 2); ctx.textBaseline = "middle";
     ctx.fillText(yLabel, 0, 0); ctx.restore();
     hits.set(id, []);
     const mark = (px, py, color, { r = 3, hollow = false, err = 0, diamond = false, html }) => {
@@ -301,7 +301,8 @@ const Measure = (() => {
       ctx.globalAlpha = 0.05; ctx.fillRect(a, box.t, b - a, box.b - box.t);
       ctx.globalAlpha = 0.9; ctx.fillRect(a + 1, box.t - 9, b - a - 2, 2);
       ctx.globalAlpha = 1; ctx.fillStyle = DIM;
-      ctx.fillText(`Band ${k + 1}`, (a + b) / 2, box.t - 24);
+      if (b - a > 54) ctx.fillText(`Band ${k + 1}`, (a + b) / 2, box.t - 27);
+      else ctx.fillText(String(k + 1), (a + b) / 2, box.t - 27);
     });
     // A faint line through each pass, so the shape of the spectrum reads at a glance.
     for (const pass of new Set(pts.map((p) => p.pass))) {
@@ -339,7 +340,7 @@ const Measure = (() => {
       ch.ctx.globalAlpha = 0.9; ch.ctx.fillRect(a + 1, ch.box.t - 9, b - a - 2, 2);
       ch.ctx.globalAlpha = 1; ch.ctx.fillStyle = DIM;
       ch.ctx.font = CHART_FONT; ch.ctx.textAlign = "center"; ch.ctx.textBaseline = "top";
-      ch.ctx.fillText(`Pass ${p.index + 1}`, (a + b) / 2, ch.box.t - 24);
+      ch.ctx.fillText(`Pass ${p.index + 1}`, (a + b) / 2, ch.box.t - 27);
     });
     passes.forEach((p, k) => {
       const color = colorOf(p.index), when = `${fmtDate(p.t0)} → ${fmtDate(p.t1)}`;
@@ -502,6 +503,23 @@ const Measure = (() => {
       $("measure-clear").onclick = () => { Measure.clear(); draw(); syncUrl(); };
       $("measure-link").onclick = copyLink;
       window.addEventListener("resize", () => { if (result) render(); });
+      // Redraw when a chart's own box changes size (not only the window), so a
+      // chart is never shown stretched from a drawing made at another width.
+      if ("ResizeObserver" in window) {
+        let queued = 0;
+        const sized = new ResizeObserver(() => {
+          if (queued) return;
+          queued = requestAnimationFrame(() => {
+            queued = 0;
+            const stale = ["spec-chart", "lc-chart"].some((id) => {
+              const cv = $(id), w = Math.round(cv.clientWidth * (window.devicePixelRatio || 1));
+              return cv.clientWidth > 0 && Math.abs(cv.width - w) > 1;
+            });
+            if (result && stale) render();
+          });
+        });
+        for (const id of ["spec-chart", "lc-chart"]) sized.observe($(id));
+      }
       render();
     },
   };
