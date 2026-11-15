@@ -8,7 +8,7 @@
   <meta name="theme-color" content="#05060a">
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' fill='%2305060a'/%3E%3Ccircle cx='36' cy='32' r='20' fill='%23f1efe9'/%3E%3Ccircle cx='18' cy='32' r='7' fill='%2305060a'/%3E%3C/svg%3E">
   <link rel="preload" href="fonts/archivo-latin-wdth-normal.woff2" as="font" type="font/woff2" crossorigin>
-  <link rel="stylesheet" href="style.css?v=0fe8da89">
+  <link rel="stylesheet" href="style.css?v=5c12597e">
   <script>document.documentElement.classList.add("js");</script>
 </head>
 <body>
@@ -190,25 +190,26 @@
 </main>
 
 <section class="hero" aria-label="About Ingress">
-  <div class="hero-star" aria-hidden="true">
-    <span class="star-glow"></span>
-    <span class="star-disc">
-      <svg viewBox="0 0 200 200" preserveAspectRatio="none">
-        <filter id="granules" x="0" y="0" width="100%" height="100%">
-          <feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="3" seed="7"/>
-          <feColorMatrix values="0 0 0 0 0.35  0 0 0 0 0.16  0 0 0 0 0.02  0.9 0.9 0.9 0 -0.95"/>
-        </filter>
-        <rect width="200" height="200" filter="url(#granules)"/>
-      </svg>
-    </span>
-    <span class="planet"></span>
+  <div class="hero-sky" aria-hidden="true">
+    <div class="hero-star">
+      <span class="star-glow"></span>
+      <span class="star-disc">
+        <svg viewBox="0 0 200 200" preserveAspectRatio="none">
+          <filter id="granules" x="0" y="0" width="100%" height="100%">
+            <feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="3" seed="7"/>
+            <feColorMatrix values="0 0 0 0 0.35  0 0 0 0 0.16  0 0 0 0 0.02  0.9 0.9 0.9 0 -0.95"/>
+          </filter>
+          <rect width="200" height="200" filter="url(#granules)"/>
+        </svg>
+      </span>
+      <span class="planet"></span>
+    </div>
   </div>
 
   <div class="hero-copy">
     <p>SPHEREx photographs the whole sky over and over. Ingress lines up every visit to one patch, so whatever moved or changed stands out.</p>
     <h2>Watch the sky change</h2>
   </div>
-  <span class="cue" aria-hidden="true">Scroll</span>
 </section>
 
 <section class="story" id="story" aria-label="How SPHEREx sees the sky">
