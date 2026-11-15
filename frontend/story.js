@@ -1,6 +1,6 @@
 "use strict";
-/* Decorative scroll story above the viewer: the planet crossing the star in
- * the hero, and three scenes drawn on one canvas as the page scrolls (the
+/* Decorative scroll story below the viewer: the planet crossing the star in
+ * the opening scene, and three scenes drawn on one canvas as the page scrolls (the
  * sky being scanned, the 102 spectral channels, a patch blinking between
  * survey passes). Nothing here reads or changes the viewer's state.
  */
@@ -9,6 +9,7 @@
   const story = document.getElementById("story");
   const cv = document.getElementById("story-canvas");
   const sky = document.getElementById("sky");
+  const hero = document.querySelector(".hero");
   if (!story || !cv || !cv.getContext) return;
   const ctx = cv.getContext("2d");
   const reduce = window.matchMedia ? window.matchMedia("(prefers-reduced-motion: reduce)") : { matches: false };
@@ -29,21 +30,6 @@
       return seed / 4294967296;
     };
   }
-
-  // A link that names a field goes straight to the viewer.
-  if (new URLSearchParams(location.search).has("ra")) {
-    const viewer = document.getElementById("viewer");
-    if (viewer) viewer.scrollIntoView();
-  }
-
-  // Headings rise into place the first time they come into view.
-  const waiting = document.querySelectorAll("[data-reveal]");
-  if ("IntersectionObserver" in window) {
-    const seen = new IntersectionObserver((entries) => {
-      for (const e of entries) if (e.isIntersecting) { e.target.classList.add("in"); seen.unobserve(e.target); }
-    }, { rootMargin: "0px 0px -12% 0px" });
-    waiting.forEach((el) => seen.observe(el));
-  } else waiting.forEach((el) => el.classList.add("in"));
 
   // ------------------------------------------------------------ scene 1 ---
   // The celestial sphere, filling with scan circles through the ecliptic poles.
@@ -280,7 +266,11 @@
   function render(time) {
     raf = 0;
     const vh = window.innerHeight, y = window.scrollY;
-    root.style.setProperty("--ing", clamp(y / vh).toFixed(4));
+    if (hero) {
+      const top = hero.getBoundingClientRect().top;
+      root.style.setProperty("--ing", clamp((vh - top) / (2 * vh)).toFixed(4)); // the planet crosses the limb
+      root.style.setProperty("--out", clamp(-top / vh).toFixed(4)); // the words leave as the story takes over
+    }
     if (sky) sky.style.transform = `translate3d(0,${(-Math.min(y, 6 * vh) * 0.012).toFixed(1)}px,0)`;
 
     const box = story.getBoundingClientRect();

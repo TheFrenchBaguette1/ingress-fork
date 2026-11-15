@@ -49,18 +49,30 @@ code { font-family: var(--mono); background: var(--surface); border: 1px solid v
 /* The star field sits behind everything and drifts slightly on scroll. */
 #sky { position: fixed; left: 0; top: -8vh; width: 100%; height: 116vh; z-index: -1; pointer-events: none; }
 
+/* ---------------------------------------------------------------- top --- */
+
+.top {
+  display: flex; align-items: center; gap: 6px clamp(14px, 2.4vw, 36px); min-height: 48px; padding: 0 var(--pad);
+  border-bottom: 1px solid var(--hair);
+}
+.brand { display: flex; align-items: center; gap: 10px; }
+.brand svg { width: 20px; height: 20px; }
+.top h1 { margin: 0; font-family: var(--display); font-stretch: 125%; font-weight: 700; font-size: 17px; line-height: 1; text-transform: uppercase; }
+.top p { margin: 0 auto 0 0; min-width: 0; color: var(--dim); font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bar-meta { font-family: var(--mono); font-size: 12px; color: var(--dim); white-space: nowrap; }
+@media (max-width: 860px) {
+  .top { flex-wrap: wrap; padding: 10px var(--pad); }
+  .top p { flex-basis: 100%; order: 3; white-space: normal; }
+  .bar-meta { display: none; }
+}
+
 /* --------------------------------------------------------------- hero --- */
+/* Opens the story below the viewer: a planet starting its transit of a star. */
 
 .hero {
   position: relative; height: 100vh; height: 100svh; min-height: 540px; overflow: hidden;
-  display: flex; flex-direction: column; justify-content: space-between; padding: 22px var(--pad) 0;
+  display: flex; flex-direction: column; justify-content: flex-end; padding: 0 var(--pad) 7vh; border-top: 1px solid var(--hair);
 }
-.bar { position: relative; z-index: 2; display: flex; align-items: center; gap: clamp(16px, 3vw, 44px); }
-.brand { display: flex; align-items: center; gap: 10px; font-weight: 600; font-size: 15px; }
-.brand svg { width: 22px; height: 22px; }
-.bar-meta { font-family: var(--mono); font-size: 12px; color: var(--dim); }
-
-/* A star at the top right, with a planet starting its transit: the ingress. */
 .hero-star { position: absolute; right: -70vmin; top: -88vmin; width: 150vmin; height: 150vmin; pointer-events: none; }
 .star-glow {
   position: absolute; inset: -34%; border-radius: 50%;
@@ -76,19 +88,19 @@ code { font-family: var(--mono); background: var(--surface); border: 1px solid v
   position: absolute; left: 10.15%; top: 84.35%; width: 5.5%; height: 5.5%; border-radius: 50%; background: #020203;
   transform: translate(calc(var(--ing, 0) * 11vmin), calc(var(--ing, 0) * -11vmin));
 }
-
-.hero-copy { position: relative; z-index: 2; transform: translateY(calc(var(--ing, 0) * -9vh)); opacity: calc(1 - var(--ing, 0) * 1.25); }
-.hero-copy p { margin: 0 0 3vh; max-width: 29ch; font-size: clamp(17px, 1.55vw, 23px); line-height: 1.32; }
-.hero h1 {
-  margin: 0 0 -0.115em -0.04em; font-family: var(--display); font-stretch: 125%; font-weight: 700;
-  font-size: 16.5vw; line-height: 0.82; letter-spacing: -0.035em; text-transform: uppercase; white-space: nowrap;
+.hero-copy { position: relative; z-index: 2; transform: translateY(calc(var(--out, 0) * -9vh)); opacity: calc(1 - var(--out, 0) * 1.25); }
+.hero-copy p { margin: 0 0 3vh; max-width: 34ch; font-size: clamp(17px, 1.45vw, 23px); line-height: 1.32; }
+.hero h2 {
+  margin: 0 0 0 -0.04em; max-width: 9em; font-family: var(--display); font-stretch: 125%; font-weight: 700;
+  font-size: clamp(46px, 9.4vw, 190px); line-height: 0.9; letter-spacing: -0.035em;
 }
 .cue {
-  position: absolute; right: var(--pad); bottom: calc(12.5vw + 3vh); z-index: 2; font-family: var(--mono); font-size: 12px; color: var(--text);
+  position: absolute; right: var(--pad); bottom: 7vh; z-index: 2; font-family: var(--mono); font-size: 12px; color: var(--text);
   display: flex; flex-direction: column; align-items: center; gap: 10px;
 }
 .cue::after { content: ""; width: 1px; height: 56px; background: linear-gradient(var(--text), transparent); animation: drop 2.2s var(--ease) infinite; transform-origin: top; }
 @keyframes drop { 0% { transform: scaleY(0); } 60%, 100% { transform: scaleY(1); opacity: 0; } }
+@media (max-width: 860px) { .hero-star { right: -80vmin; top: -94vmin; } }
 
 /* -------------------------------------------------------------- story --- */
 
@@ -126,24 +138,25 @@ code { font-family: var(--mono); background: var(--surface); border: 1px solid v
 
 /* --------------------------------------------------------------- tool --- */
 
-.tool { position: relative; padding: 16vh var(--pad) 90px; background: linear-gradient(180deg, transparent 0, rgba(5, 6, 10, 0.9) 260px); }
-.tool-head {
-  display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 400px); align-items: end; gap: 20px 40px;
-  margin-bottom: 34px; padding-bottom: 30px; border-bottom: 1px solid var(--hair);
+.tool { position: relative; padding: 14px var(--pad) 44px; }
+.layout { display: grid; grid-template-columns: 330px minmax(0, 1fr); gap: 0 24px; align-items: start; }
+/* On a desktop the whole viewer fits one screen: the image is sized from the
+   window's height, with the form on its left and the display controls on its right. */
+@media (min-width: 1100px) {
+  .layout {
+    --side: clamp(300px, min(100vh - 240px, 100vw - 2 * var(--pad) - 748px), 1180px);
+    grid-template-columns: 340px var(--side) 360px; grid-template-rows: auto auto auto 1fr auto; justify-content: center;
+  }
+  .viewer { display: contents; }
+  #query { grid-column: 1; grid-row: 1 / span 4; }
+  .plate { grid-column: 2; grid-row: 1; }
+  .transport { grid-column: 2; grid-row: 2; }
+  #timeline { grid-column: 2; grid-row: 3; }
+  .info { grid-column: 2; grid-row: 4; }
+  .layout .controls { grid-column: 3; grid-row: 1 / span 4; grid-template-columns: 1fr; margin-top: 0; }
+  .layout .measure { grid-column: 1 / -1; grid-row: 5; }
 }
-.tool-head h2 {
-  margin: 0; font-family: var(--display); font-stretch: 118%; font-weight: 600;
-  font-size: clamp(36px, 6vw, 96px); line-height: 0.94; letter-spacing: -0.035em;
-}
-.tool-head p { margin: 0 0 6px; color: #c2c6d0; }
-[data-reveal] { transition: opacity 0.7s ease, transform 0.9s var(--ease); }
-.js [data-reveal]:not(.in) { opacity: 0; transform: translateY(34px); }
-
-.layout { display: grid; grid-template-columns: 330px minmax(0, 1fr); gap: 28px; align-items: start; }
-@media (max-width: 860px) {
-  .layout, .tool-head { grid-template-columns: 1fr; }
-  .tool { padding-top: 10vh; }
-}
+@media (max-width: 860px) { .layout { grid-template-columns: 1fr; } }
 
 .panel, fieldset, .measure, .transport { background: rgba(11, 14, 21, 0.92); border: 1px solid var(--line); border-radius: 3px; }
 .panel { padding: 18px; }
@@ -183,14 +196,7 @@ button.on { background: var(--accent); color: var(--accent-ink); border-color: v
 
 /* ------------------------------------------------------------- viewer --- */
 
-.viewer { min-width: 0; max-width: 720px; }
-/* On wide screens the display controls move beside the image. */
-@media (min-width: 1280px) {
-  .viewer { max-width: none; display: grid; grid-template-columns: minmax(0, 1fr) 330px; gap: 0 24px; align-items: start; }
-  .viewer > * { grid-column: 1; }
-  .viewer > .controls { grid-column: 2; grid-row: 1 / span 4; grid-template-columns: 1fr; margin-top: 0; }
-  .viewer > .measure { grid-column: 1 / -1; }
-}
+.viewer { min-width: 0; max-width: min(720px, 100vh - 150px); }
 /* A plate frame around the image, with tick rulers on two sides. */
 .plate { position: relative; padding: 16px 0 0 16px; }
 .plate::before, .plate::after { content: ""; position: absolute; pointer-events: none; opacity: 0.5; }
@@ -258,36 +264,43 @@ input[type=range], input[type=checkbox] { accent-color: var(--accent); }
 
 /* ------------------------------------------------------------ measure --- */
 
-.measure { position: relative; margin-top: 22px; padding: 16px 18px; }
-.measure h2 { margin: 0 0 8px; }
-.measure .summary { margin: 0 0 10px; font-size: 14px; font-variant-numeric: tabular-nums; }
+.measure { position: relative; margin-top: 22px; padding: 18px 20px 20px; }
+.measure h2 { margin: 0 0 10px; padding-bottom: 12px; border-bottom: 1px solid var(--line); }
+.measure .summary { margin: 0 0 12px; max-width: 110ch; font-size: 15px; line-height: 1.5; font-variant-numeric: tabular-nums; }
+.measure .summary b { font-weight: 600; }
 .measure .warn { color: var(--accent); }
-/* Charts sit on the solid panel colour their markers are drawn against. */
-.measure figure { margin: 14px 0 0; padding: 10px 12px 6px; background: var(--panel); border: 1px solid var(--line); border-radius: 3px; }
-.measure figcaption { font-size: 12px; color: var(--dim); margin-bottom: 6px; }
-.measure figcaption b { color: var(--text); }
-.measure canvas { display: block; width: 100%; height: 260px; }
-.legend { display: flex; flex-wrap: wrap; gap: 4px 16px; font-size: 12px; color: var(--text); }
-.legend .key { display: inline-flex; align-items: center; gap: 6px; font-variant-numeric: tabular-nums; }
-.legend .key i { width: 10px; height: 10px; border-radius: 50%; }
-.tip { position: absolute; z-index: 5; width: 180px; padding: 6px 8px; font-size: 12px; background: #0c0f16; border: 1px solid var(--line); border-radius: 3px; pointer-events: none; font-variant-numeric: tabular-nums; }
+#measure-body { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0 20px; }
+@media (min-width: 1100px) {
+  #measure-body { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  #measure-body > :not(figure), #measure-body:has(#lc-block[hidden]) > figure { grid-column: 1 / -1; }
+}
+.measure figure { margin: 16px 0 0; padding: 14px 14px 8px; background: var(--bg); border: 1px solid var(--line); border-radius: 3px; }
+.measure figcaption { min-height: 3.1em; margin-bottom: 8px; font-size: 12px; color: var(--dim); }
+.measure figcaption b { display: block; margin-bottom: 2px; font-family: var(--display); font-stretch: 112%; font-weight: 600; font-size: 17px; letter-spacing: -0.01em; color: var(--text); }
+.measure canvas { display: block; width: 100%; height: 320px; }
+.measure #measure-method { margin-top: 12px; max-width: 120ch; }
+.measure .row.tight { margin-top: 12px; }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 20px; font-family: var(--mono); font-size: 11.5px; color: var(--text); }
+.legend .key { display: inline-flex; align-items: center; gap: 7px; font-variant-numeric: tabular-nums; }
+.legend .key i { width: 9px; height: 9px; border-radius: 50%; }
+.tip {
+  position: absolute; z-index: 5; width: 180px; padding: 8px 10px; font-family: var(--mono); font-size: 11px; line-height: 1.5;
+  background: rgba(5, 6, 10, 0.94); border: 1px solid #39425a; border-radius: 2px; pointer-events: none; font-variant-numeric: tabular-nums;
+}
+.tip b { font-weight: 600; color: var(--text); }
 
 /* ------------------------------------------------------------- footer --- */
 
 footer { position: relative; overflow: hidden; padding: 26px var(--pad) 0; border-top: 1px solid var(--hair); background: var(--bg); color: var(--dim); font-size: 12px; }
 footer p { margin: 0; max-width: 78ch; }
 .wordmark {
-  margin: 5vw 0 -0.2em -0.04em; font-family: var(--display); font-stretch: 125%; font-weight: 700; font-size: 16.5vw; line-height: 0.82;
+  margin: 4vw 0 -0.2em -0.04em; font-family: var(--display); font-stretch: 125%; font-weight: 700; font-size: 16.5vw; line-height: 0.82;
   letter-spacing: -0.035em; text-transform: uppercase; white-space: nowrap; color: transparent; -webkit-text-stroke: 1px rgba(241, 239, 233, 0.28);
   user-select: none;
 }
 
 @media (prefers-reduced-motion: reduce) {
   .cue::after, .turn { animation: none; }
-  [data-reveal], .js .chapter { transition: none; }
+  .js .chapter { transition: none; }
 }
 
-@media (max-width: 860px) {
-  .bar-meta { display: none; }
-  .hero-star { right: -80vmin; top: -94vmin; }
-}

@@ -8,76 +8,24 @@
   <meta name="theme-color" content="#05060a">
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' fill='%2305060a'/%3E%3Ccircle cx='36' cy='32' r='20' fill='%23f1efe9'/%3E%3Ccircle cx='18' cy='32' r='7' fill='%2305060a'/%3E%3C/svg%3E">
   <link rel="preload" href="fonts/archivo-latin-wdth-normal.woff2" as="font" type="font/woff2" crossorigin>
-  <link rel="stylesheet" href="style.css?v=184d22ad">
+  <link rel="stylesheet" href="style.css?v=306a4c07">
   <script>document.documentElement.classList.add("js");</script>
 </head>
 <body>
 <canvas id="sky" aria-hidden="true"></canvas>
 
-<header class="hero">
-  <div class="hero-star" aria-hidden="true">
-    <span class="star-glow"></span>
-    <span class="star-disc">
-      <svg viewBox="0 0 200 200" preserveAspectRatio="none">
-        <filter id="granules" x="0" y="0" width="100%" height="100%">
-          <feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="3" seed="7"/>
-          <feColorMatrix values="0 0 0 0 0.35  0 0 0 0 0.16  0 0 0 0 0.02  0.9 0.9 0.9 0 -0.95"/>
-        </filter>
-        <rect width="200" height="200" filter="url(#granules)"/>
-      </svg>
-    </span>
-    <span class="planet"></span>
-  </div>
-
-  <div class="bar">
-    <span class="brand">
-      <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="13.5" cy="12" r="8.5" fill="currentColor"/><circle cx="6" cy="12" r="3.2" fill="#05060a" stroke="currentColor" stroke-width="1"/></svg>
-      Ingress
-    </span>
-    <span class="bar-meta">NASA Space Apps 2026</span>
-    <span class="bar-meta">SPHEREx challenge</span>
-  </div>
-
-  <div class="hero-copy">
-    <p>Blink SPHEREx infrared images of any patch of sky to spot things that move or vary.</p>
+<header class="top">
+  <span class="brand">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="13.5" cy="12" r="8.5" fill="currentColor"/><circle cx="6" cy="12" r="3.2" fill="#05060a" stroke="currentColor" stroke-width="1"/></svg>
     <h1>Ingress</h1>
-  </div>
-  <span class="cue" aria-hidden="true">Scroll</span>
+  </span>
+  <p>Blink SPHEREx infrared images of any patch of sky to spot things that move or vary.</p>
+  <span class="bar-meta">NASA Space Apps 2026</span>
+  <span class="bar-meta">SPHEREx challenge</span>
 </header>
 
-<section class="story" id="story" aria-label="How SPHEREx sees the sky">
-  <div class="story-pin">
-    <canvas id="story-canvas" aria-hidden="true"></canvas>
-    <div class="story-prog" aria-hidden="true"><i></i></div>
-    <div class="chapters">
-      <article class="chapter">
-        <p class="idx">01 / 03</p>
-        <h2>The whole sky, twice a year</h2>
-        <p>SPHEREx circles Earth from pole to pole, scanning one thin strip of sky on every orbit. In about six months the strips close into a complete map, and the survey starts over.</p>
-        <p class="stat"><b data-stat="cover">0%</b> of the sky scanned</p>
-      </article>
-      <article class="chapter">
-        <p class="idx">02 / 03</p>
-        <h2>Infrared light, split 102 ways</h2>
-        <p>Six detectors cover 0.75 to 5.0 µm. A filter that changes colour across each one sorts the light into 102 narrow channels, far past what eyes can see.</p>
-        <p class="stat"><b data-stat="wave">0.75 µm</b> channel <span data-stat="chan">1</span> of 102</p>
-      </article>
-      <article class="chapter">
-        <p class="idx">03 / 03</p>
-        <h2>Same patch, different night</h2>
-        <p>Line up every visit to one patch and play them back. Stars hold still. Whatever moves or changes brightness gives itself away.</p>
-        <p class="stat"><b data-stat="pass">Pass 1</b> <span data-stat="date">2025-05</span></p>
-      </article>
-    </div>
-  </div>
-</section>
 
 <main class="tool" id="viewer">
-  <div class="tool-head">
-    <h2 data-reveal>Pick a patch of sky</h2>
-    <p data-reveal>Enter coordinates or choose a test target. Once the exposures load, space plays and pauses and the arrow keys step through frames.</p>
-  </div>
-
   <div class="layout">
     <form id="query" class="panel" novalidate>
       <h2>Field</h2>
@@ -220,11 +168,11 @@
           <p id="measure-summary" class="summary"></p>
           <div id="measure-legend" class="legend"></div>
           <figure>
-            <figcaption><b>Spectrum</b> · brightness at each wavelength, one colour per survey pass</figcaption>
+            <figcaption><b>Spectrum</b> Brightness at each wavelength, one colour per survey pass.</figcaption>
             <canvas id="spec-chart" aria-label="Spectrum of the selected object"></canvas>
           </figure>
           <figure id="lc-block">
-            <figcaption><b>Brightness over time</b> · each exposure compared with this object's average at the same wavelength.
+            <figcaption><b>Brightness over time</b> Each exposure compared with this object's average at the same wavelength.
               In each pass the dots run from band 1 (left) to band 6; the diamond is all bands together.</figcaption>
             <canvas id="lc-chart" aria-label="Brightness of the selected object over time"></canvas>
           </figure>
@@ -241,6 +189,55 @@
   </div>
 </main>
 
+<section class="hero" aria-label="About Ingress">
+  <div class="hero-star" aria-hidden="true">
+    <span class="star-glow"></span>
+    <span class="star-disc">
+      <svg viewBox="0 0 200 200" preserveAspectRatio="none">
+        <filter id="granules" x="0" y="0" width="100%" height="100%">
+          <feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="3" seed="7"/>
+          <feColorMatrix values="0 0 0 0 0.35  0 0 0 0 0.16  0 0 0 0 0.02  0.9 0.9 0.9 0 -0.95"/>
+        </filter>
+        <rect width="200" height="200" filter="url(#granules)"/>
+      </svg>
+    </span>
+    <span class="planet"></span>
+  </div>
+
+  <div class="hero-copy">
+    <p>SPHEREx photographs the whole sky over and over. Ingress lines up every visit to one patch, so whatever moved or changed stands out.</p>
+    <h2>Watch the sky change</h2>
+  </div>
+  <span class="cue" aria-hidden="true">Scroll</span>
+</section>
+
+<section class="story" id="story" aria-label="How SPHEREx sees the sky">
+  <div class="story-pin">
+    <canvas id="story-canvas" aria-hidden="true"></canvas>
+    <div class="story-prog" aria-hidden="true"><i></i></div>
+    <div class="chapters">
+      <article class="chapter">
+        <p class="idx">01 / 03</p>
+        <h2>The whole sky, twice a year</h2>
+        <p>SPHEREx circles Earth from pole to pole, scanning one thin strip of sky on every orbit. In about six months the strips close into a complete map, and the survey starts over.</p>
+        <p class="stat"><b data-stat="cover">0%</b> of the sky scanned</p>
+      </article>
+      <article class="chapter">
+        <p class="idx">02 / 03</p>
+        <h2>Infrared light, split 102 ways</h2>
+        <p>Six detectors cover 0.75 to 5.0 µm. A filter that changes colour across each one sorts the light into 102 narrow channels, far past what eyes can see.</p>
+        <p class="stat"><b data-stat="wave">0.75 µm</b> channel <span data-stat="chan">1</span> of 102</p>
+      </article>
+      <article class="chapter">
+        <p class="idx">03 / 03</p>
+        <h2>Same patch, different night</h2>
+        <p>Line up every visit to one patch and play them back. Stars hold still. Whatever moves or changes brightness gives itself away.</p>
+        <p class="stat"><b data-stat="pass">Pass 1</b> <span data-stat="date">2025-05</span></p>
+      </article>
+    </div>
+  </div>
+</section>
+
 <footer>
   <p>
     Images: NASA SPHEREx spectral images (Level 2) from the
@@ -251,9 +248,9 @@
 </footer>
 
 <script src="app.js?v=dc279fcc"></script>
-<script src="measure.js?v=3796b9e3"></script>
+<script src="measure.js?v=b3ee3495"></script>
 <script>Measure.init();</script>
 <script src="sky.js?v=661975b6"></script>
-<script src="story.js?v=b83fa65d"></script>
+<script src="story.js?v=4a8649d9"></script>
 </body>
 </html>
