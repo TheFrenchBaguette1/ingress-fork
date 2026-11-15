@@ -352,7 +352,11 @@ input[type=range], input[type=checkbox] { accent-color: var(--accent); }
 .insight-list { margin-top: 14px; }
 .insight-list ul { margin: 6px 0 0; padding-left: 18px; font-size: 13.5px; color: #c2c6d0; }
 .insight-list li { margin-bottom: 4px; max-width: 110ch; }
-.insight-note { margin-top: 14px; }
+.insight-note {
+  margin: 12px 0 0; padding: 9px 12px; max-width: 110ch; font-size: 13px; color: #c2c6d0;
+  background: rgba(242, 180, 65, 0.07); border-left: 2px solid var(--accent); border-radius: 0 2px 2px 0;
+}
+.insight-note b { font-weight: 600; color: var(--text); }
 
 .measure #measure-method { margin-top: 12px; max-width: 120ch; }
 .measure .row.tight { margin-top: 12px; }
