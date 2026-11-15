@@ -456,11 +456,11 @@ const Measure = (() => {
 
   // ------------------------------------------------------------ public ---
 
-  function refresh() { compute(); render(); }
+  function refresh() { compute(); render(); if (window.Insight) Insight.update(); }
 
   return {
     refresh,
-    clear() { pick = null; result = null; render(); },
+    clear() { pick = null; result = null; render(); if (window.Insight) Insight.update(); },
     /** Sky position of the selected object, or null. */
     picked() { return pick && state.field ? pixelToSky(pick.i, pick.j) : null; },
     /** The current measurements (see compute), or null. */

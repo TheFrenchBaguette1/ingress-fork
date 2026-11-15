@@ -17,7 +17,7 @@ from fastapi import FastAPI, HTTPException, Query
 from fastapi.responses import FileResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 
-from . import presets
+from . import analyze, presets
 from . import spherex as sx
 
 logging.getLogger("ingress").setLevel(logging.INFO)
@@ -31,6 +31,7 @@ MJD_EPOCH = date(1858, 11, 17).toordinal()
 SURVEY_START = date.fromordinal(int(sx.MJD_MIN) + MJD_EPOCH)
 
 app = FastAPI(title="Ingress", docs_url="/api/docs", openapi_url="/api/openapi.json")
+app.include_router(analyze.router)  # AI reading of a measured object (needs OPENAI_API_KEY)
 presets.start()
 # Worker threads spend their time waiting on the archive; the semaphores in
 # spherex.py limit the load this server puts on it, across all its users.

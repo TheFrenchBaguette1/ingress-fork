@@ -8,7 +8,7 @@
   <meta name="theme-color" content="#05060a">
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' fill='%2305060a'/%3E%3Ccircle cx='36' cy='32' r='20' fill='%23f1efe9'/%3E%3Ccircle cx='18' cy='32' r='7' fill='%2305060a'/%3E%3C/svg%3E">
   <link rel="preload" href="fonts/archivo-latin-wdth-normal.woff2" as="font" type="font/woff2" crossorigin>
-  <link rel="stylesheet" href="style.css?v=3267d56f">
+  <link rel="stylesheet" href="style.css?v=5e59e086">
   <script>document.documentElement.classList.add("js");</script>
 </head>
 <body>
@@ -188,6 +188,16 @@
               In each pass the dots run from band 1 (left) to band 6; the diamond is all bands together.</figcaption>
             <canvas id="lc-chart" aria-label="Brightness of the selected object over time"></canvas>
           </figure>
+          <section id="insight" class="insight" hidden aria-live="polite">
+            <div class="insight-head">
+              <h3>AI reading</h3>
+              <span id="insight-model" class="insight-model"></span>
+              <button id="insight-again" type="button" hidden>Analyze again</button>
+            </div>
+            <p id="insight-status" class="insight-status" hidden></p>
+            <div id="insight-body"></div>
+            <p class="hint insight-note">Written by an AI model from the measurements above. It can be wrong: the charts and numbers are the record.</p>
+          </section>
           <p id="measure-method" class="hint"></p>
           <div class="row tight">
             <button id="measure-link" type="button">Copy link to this object</button>
@@ -262,8 +272,9 @@
 
 <script src="app.js?v=d8600022"></script>
 <script src="compare.js?v=bdad2edc"></script>
-<script src="measure.js?v=6102a9aa"></script>
-<script>Measure.init();</script>
+<script src="measure.js?v=b2d79902"></script>
+<script src="insight.js?v=9b63e2f7"></script>
+<script>Measure.init(); Insight.init();</script>
 <script src="sky.js?v=661975b6"></script>
 <script src="story.js?v=4a8649d9"></script>
 </body>
