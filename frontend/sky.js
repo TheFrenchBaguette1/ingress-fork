@@ -1,14 +1,14 @@
 "use strict";
-/* Decorative background only: a fixed field of stars with a faint celestial
- * grid behind the page. Nothing here reads or changes the viewer's state.
+/* Decorative background only: a deep star field painted once behind the
+ * page. Nothing here reads or changes the viewer's state. story.js moves the
+ * canvas a little as the page scrolls.
  */
 (() => {
   const cv = document.getElementById("sky");
   if (!cv || !cv.getContext) return;
   const ctx = cv.getContext("2d");
-  const still = window.matchMedia ? window.matchMedia("(prefers-reduced-motion: reduce)") : { matches: false };
-  const TINTS = ["#ffffff", "#ffffff", "#ffffff", "#cfe0ff", "#ffe2b0", "#ffc9d6"];
-  let stars = [], w = 0, h = 0, dpr = 1;
+  // Star colours from hot to cool, kept close to white.
+  const TINTS = ["#dfe8ff", "#eef2ff", "#ffffff", "#ffffff", "#fff4e2", "#ffe6c8", "#ffd9b8"];
 
   // The same sky on every visit: a small seeded generator.
   function seeded(seed) {
@@ -18,79 +18,76 @@
     };
   }
 
-  function layout() {
-    dpr = Math.min(window.devicePixelRatio || 1, 2);
-    w = window.innerWidth;
-    h = window.innerHeight;
+  function paint() {
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    const w = cv.clientWidth, h = cv.clientHeight;
+    if (!w || !h) return;
     cv.width = Math.round(w * dpr);
     cv.height = Math.round(h * dpr);
-    const rand = seeded(20250311);
-    const count = Math.min(900, Math.round((w * h) / 2400));
-    stars = Array.from({ length: count }, (_, i) => {
-      const m = rand();
-      return {
-        x: rand() * w, y: rand() * h,
-        r: 0.35 + 1.3 * m * m * m,
-        a: 0.3 + 0.6 * rand(),
-        tint: TINTS[Math.floor(rand() * TINTS.length)],
-        phase: rand() * 6.283, rate: 0.5 + rand() * 1.3,
-        twinkle: i % 5 === 0,
-      };
-    });
-    paint(0);
-  }
-
-  function paint(t) {
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    ctx.clearRect(0, 0, w, h);
+    ctx.fillStyle = "#040508";
+    ctx.fillRect(0, 0, w, h);
+    const rand = seeded(20250311);
 
-    // Celestial grid: circles of declination and hour lines about a pole
-    // that sits off the top right of the page.
-    const px = w * 0.84, py = -h * 0.3, reach = Math.hypot(w, h) * 1.3;
-    ctx.strokeStyle = "rgba(148,160,184,0.06)";
-    ctx.lineWidth = 1;
-    for (let r = 180; r < reach; r += 170) {
-      ctx.beginPath();
-      ctx.arc(px, py, r, 0, 2 * Math.PI);
-      ctx.stroke();
+    // A band of unresolved starlight crossing the frame, lower left to upper right.
+    const ax = -0.05 * w, ay = 0.92 * h, bx = 1.05 * w, by = 0.08 * h;
+    const len = Math.hypot(bx - ax, by - ay), nx = -(by - ay) / len, ny = (bx - ax) / len;
+    const reach = 0.3 * Math.max(w, h);
+    ctx.globalCompositeOperation = "lighter";
+    for (let k = 0; k < 11; k++) {
+      const u = k / 10 + (rand() - 0.5) * 0.06, off = (rand() - 0.5) * 0.12 * h;
+      const x = ax + (bx - ax) * u + nx * off, y = ay + (by - ay) * u + ny * off;
+      const r = reach * (0.6 + 0.7 * rand());
+      const g = ctx.createRadialGradient(x, y, 0, x, y, r);
+      const warm = k % 4 === 1;
+      g.addColorStop(0, warm ? "rgba(190,160,140,0.045)" : "rgba(130,150,200,0.05)");
+      g.addColorStop(1, "rgba(0,0,0,0)");
+      ctx.fillStyle = g;
+      ctx.fillRect(x - r, y - r, 2 * r, 2 * r);
     }
-    ctx.beginPath();
-    for (let k = 0; k < 24; k++) {
-      const a = (k / 24) * 2 * Math.PI;
-      ctx.moveTo(px + 180 * Math.cos(a), py + 180 * Math.sin(a));
-      ctx.lineTo(px + reach * Math.cos(a), py + reach * Math.sin(a));
-    }
-    ctx.stroke();
 
-    for (const s of stars) {
-      const a = s.twinkle ? s.a * (0.6 + 0.4 * Math.sin(s.phase + t * s.rate)) : s.a;
-      ctx.globalAlpha = a;
-      ctx.fillStyle = s.tint;
-      ctx.beginPath();
-      ctx.arc(s.x, s.y, s.r, 0, 2 * Math.PI);
-      ctx.fill();
-      if (s.r > 1.25) { // the brightest few get diffraction spikes
-        ctx.globalAlpha = a * 0.35;
-        ctx.strokeStyle = s.tint;
-        ctx.lineWidth = 0.6;
-        const L = s.r * 5;
-        ctx.beginPath();
-        ctx.moveTo(s.x - L, s.y); ctx.lineTo(s.x + L, s.y);
-        ctx.moveTo(s.x, s.y - L); ctx.lineTo(s.x, s.y + L);
-        ctx.stroke();
-        ctx.strokeStyle = "rgba(148,160,184,0.06)";
-        ctx.lineWidth = 1;
+    // Faint stars, crowded towards the band.
+    const sigma = 0.2 * h;
+    const faint = Math.min(16000, Math.round((w * h) / 170));
+    ctx.fillStyle = "#fff";
+    for (let k = 0; k < faint; k++) {
+      const x = rand() * w, y = rand() * h;
+      const d = ((x - ax) * nx + (y - ay) * ny) / sigma;
+      if (rand() > 0.1 + 0.9 * Math.exp(-d * d)) continue;
+      ctx.globalAlpha = 0.08 + 0.4 * rand() * rand();
+      const s = rand() < 0.85 ? 0.7 : 1.1;
+      ctx.fillRect(x, y, s, s);
+    }
+
+    // Brighter field stars, a few with a soft glow.
+    const bright = Math.min(1400, Math.round((w * h) / 3600));
+    for (let k = 0; k < bright; k++) {
+      const x = rand() * w, y = rand() * h, m = rand();
+      const r = 0.4 + 1.2 * m * m * m * m;
+      const tint = TINTS[Math.floor(rand() * TINTS.length)];
+      if (r > 1.05) {
+        const R = r * (5 + 6 * rand());
+        const g = ctx.createRadialGradient(x, y, 0, x, y, R);
+        g.addColorStop(0, "rgba(255,255,255,0.22)");
+        g.addColorStop(1, "rgba(255,255,255,0)");
+        ctx.globalAlpha = 1;
+        ctx.fillStyle = g;
+        ctx.fillRect(x - R, y - R, 2 * R, 2 * R);
       }
+      ctx.globalAlpha = 0.45 + 0.55 * rand();
+      ctx.fillStyle = tint;
+      ctx.beginPath();
+      ctx.arc(x, y, r, 0, 2 * Math.PI);
+      ctx.fill();
     }
     ctx.globalAlpha = 1;
+    ctx.globalCompositeOperation = "source-over";
   }
 
-  layout();
-  window.addEventListener("resize", layout);
-  // A slow twinkle, skipped when the tab is hidden or motion is unwanted.
-  const t0 = performance.now();
-  setInterval(() => {
-    if (document.hidden || still.matches) return;
-    paint((performance.now() - t0) / 1000);
-  }, 160);
+  paint();
+  let wait = null;
+  window.addEventListener("resize", () => {
+    clearTimeout(wait);
+    wait = setTimeout(paint, 150);
+  });
 })();
