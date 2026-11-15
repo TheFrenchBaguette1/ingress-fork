@@ -19,6 +19,7 @@ const Period = (() => {
   const ERROR_FLOOR = 0.03; // 3% added in quadrature to each nightly mean
   const CLIP = 5; // nights further than this many robust sigma from the median are set aside
   const REPLICATE = 0.1; // the two half-samples must each give the period to within this fraction
+  const MIN_CYCLES = 1.5; // the data must span this many cycles of the period found
   const MIN_EXPLAINED = 0.3; // a period is reported only if it explains this much variance
   const MATCH_ARCSEC = 20;
   // Stars with a catalogued period to compare against.
@@ -118,6 +119,7 @@ const Period = (() => {
     });
     if (best.P <= P_MIN || best.P >= P_MAX) return { ...out, status: "edge", why: `The best fit lies at the edge of the range searched (${P_MIN} to ${P_MAX} days), so no period is reported.` };
     if (out.explained < MIN_EXPLAINED) return { ...out, status: "weak", why: `No convincing periodic variation between ${P_MIN} and ${P_MAX} days: the best sinusoid explains only ${Math.max(0, out.explained * 100).toFixed(0)}% of the variation.` };
+    if (out.span < MIN_CYCLES * best.P) return { ...out, status: "short", why: `The best fit is ${best.P} days, but the observations span only ${out.span} days, ${(out.span / best.P).toFixed(1)} cycles of that length. At least ${MIN_CYCLES} cycles must be observed before a period is reported, because a single rise and fall can be fitted by many different periods.` };
     if (!replicated) return { ...out, status: "unconfirmed", why: `A sinusoid of ${best.P} days fits all the nights together, but analysing every other night separately gives ${out.halves[0].period} and ${out.halves[1].period} days. A real period would be found in both halves, so none is reported.` };
     return { ...out, status: "ok" };
   }

@@ -172,7 +172,8 @@ computed from the exposures loaded, and change if the dates do.
 The same search runs for any object clicked. Stars with a catalogued period
 (the `REFERENCES` list in `frontend/period.js`) are compared with it; others
 get a period only if the data support one: enough nights spread over at
-least six months, outlying nights set aside, 30% of the variation explained,
+least six months and 1.5 cycles, outlying nights set aside, 30% of the
+variation explained,
 and the same period recovered from the even and the odd nights separately.
 Most fields have too few nights, and the panel says so.
 
