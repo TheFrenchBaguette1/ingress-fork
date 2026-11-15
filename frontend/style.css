@@ -20,8 +20,14 @@ code { background: var(--panel); padding: 1px 5px; border-radius: 4px; font-size
 .top h1 { margin: 0; font-size: 22px; letter-spacing: 0.04em; color: var(--accent); }
 .top p { margin: 0; color: var(--dim); }
 
-.layout { display: grid; grid-template-columns: 320px minmax(0, 1fr); gap: 20px; padding: 14px 24px 24px; align-items: start; }
-@media (max-width: 860px) { .layout { grid-template-columns: 1fr; padding: 12px 16px; } .top { padding: 14px 16px 4px; } }
+.layout { display: grid; grid-template-columns: 300px minmax(0, 720px) 380px; grid-template-areas: "form viewer period"; gap: 20px; padding: 14px 24px 24px; align-items: start; }
+#query { grid-area: form; }
+.viewer { grid-area: viewer; }
+#period { grid-area: period; }
+@media (min-width: 1560px) { .layout { grid-template-columns: 300px minmax(0, 720px) 460px; } }
+/* Narrower screens: the result sits above the image, then everything stacks. */
+@media (max-width: 1199px) { .layout { grid-template-columns: 300px minmax(0, 1fr); grid-template-areas: "form period" "form viewer"; } }
+@media (max-width: 860px) { .layout { grid-template-columns: 1fr; grid-template-areas: "form" "period" "viewer"; padding: 12px 16px; } .top { padding: 14px 16px 4px; } }
 
 .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 16px; }
 .panel h2 { margin: 0 0 10px; font-size: 13px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--dim); }
@@ -166,3 +172,35 @@ body.modal-open { overflow: hidden; }
 .modal-body table { border-collapse: collapse; margin: 10px 0; font-variant-numeric: tabular-nums; }
 .modal-body th { text-align: left; font-weight: 500; color: var(--dim); padding: 4px 18px 4px 0; border-bottom: 1px solid var(--line); }
 .modal-body td { padding: 4px 18px 4px 0; border-bottom: 1px solid var(--line); }
+
+/* Period search and validation result */
+.period { position: relative; min-width: 0; }
+.period p { margin: 0 0 10px; font-size: 13.5px; }
+.period .verdict { display: flex; align-items: center; gap: 8px; padding: 9px 12px; border-radius: 8px; font-weight: 700; font-size: 15px; background: var(--bg); border-left: 4px solid var(--dim); }
+.period .verdict span { font-size: 17px; }
+.period .verdict.ok { border-left-color: #0ca30c; } .period .verdict.ok span { color: #0ca30c; }
+.period .verdict.warn { border-left-color: var(--accent); } .period .verdict.warn span { color: var(--accent); }
+.period .verdict.bad, .period .verdict.none { border-left-color: var(--bad); } .period .verdict.bad span, .period .verdict.none span { color: var(--bad); }
+.period .verdict.info { border-left-color: #3987e5; } .period .verdict.info span { color: #3987e5; }
+.period .figures { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; margin: 0 0 10px; }
+.period .figures > div { padding: 10px 12px; background: var(--bg); border-radius: 8px; }
+.period .figures small { display: block; font-size: 11.5px; color: var(--dim); text-transform: uppercase; letter-spacing: 0.06em; }
+.period .figures b { display: block; margin: 2px 0; font-size: 24px; font-variant-numeric: tabular-nums; }
+.period .figures i { font-style: normal; font-size: 12px; color: var(--dim); }
+.period table { width: 100%; border-collapse: collapse; margin: 0 0 10px; font-size: 13.5px; font-variant-numeric: tabular-nums; }
+.period th { text-align: left; font-weight: 400; color: var(--dim); padding: 5px 8px 5px 0; border-bottom: 1px solid var(--line); }
+.period td { text-align: right; font-weight: 600; padding: 5px 0; border-bottom: 1px solid var(--line); white-space: nowrap; }
+.period figure { margin: 14px 0 0; }
+.period figcaption { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 4px 12px; font-size: 12px; margin-bottom: 4px; }
+.period canvas { display: block; width: 100%; height: 210px; }
+.period .keys { display: inline-flex; gap: 12px; color: var(--dim); }
+.period .key { display: inline-flex; align-items: center; gap: 5px; }
+.period .key .dot { width: 8px; height: 8px; border-radius: 50%; }
+.period .key .line { width: 14px; height: 2px; }
+.period .key .band { width: 12px; height: 10px; background: rgba(57, 135, 229, 0.3); }
+.period .status { display: flex; align-items: center; gap: 8px; font-weight: 600; }
+.spinner { width: 14px; height: 14px; border: 2px solid var(--line); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.8s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .spinner { animation: none; } }
+#period-charts { display: grid; grid-template-columns: repeat(auto-fit, minmax(270px, 1fr)); gap: 0 18px; }
+.period .caution span { color: var(--accent); }

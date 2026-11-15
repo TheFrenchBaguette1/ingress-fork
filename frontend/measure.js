@@ -375,15 +375,17 @@ const Measure = (() => {
     else fallback();
   }
 
-  function hover(id, ev) {
-    const tip = $("chart-tip"), r = $(id).getBoundingClientRect();
+  /** Show the tooltip of the mark nearest the pointer. `tipId` is the
+   *  tooltip element and `hostId` the positioned element that contains it. */
+  function hover(id, ev, tipId = "chart-tip", hostId = "measure") {
+    const tip = $(tipId), r = $(id).getBoundingClientRect();
     const x = ev.clientX - r.left, y = ev.clientY - r.top;
     let best = null, bd = 18 ** 2;
     for (const h of hits.get(id) || []) { const d = (h.x - x) ** 2 + (h.y - y) ** 2; if (d < bd) { bd = d; best = h; } }
     tip.hidden = !best;
     if (!best) return;
     tip.innerHTML = best.html;
-    const host = $("measure").getBoundingClientRect();
+    const host = $(hostId).getBoundingClientRect();
     tip.style.left = `${Math.min(r.left - host.left + best.x + 12, host.width - 190)}px`;
     tip.style.top = `${r.top - host.top + best.y + 12}px`;
   }
@@ -405,11 +407,13 @@ const Measure = (() => {
 
   // ------------------------------------------------------------ public ---
 
-  function refresh() { compute(); render(); }
+  function refresh() { compute(); render(); if (window.Period) Period.update(); }
 
   return {
     refresh,
-    clear() { pick = null; result = null; render(); },
+    chart: frame, // shared with the period panel
+    hover,
+    clear() { pick = null; result = null; render(); if (window.Period) Period.update(); },
     /** Sky position of the selected object, or null. */
     picked() { return pick && state.field ? pixelToSky(pick.i, pick.j) : null; },
     /** The current measurements (see compute), or null. */
