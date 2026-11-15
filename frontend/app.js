@@ -13,6 +13,7 @@ const ZOOM_STEPS = [1, 2, 3, 5, 10, 15, 20]; // arcmin
 const PASS_GAP_DAYS = 30; // a longer pause in coverage starts a new survey pass
 const PASS_MAX_DAYS = 45; // much longer continuous coverage is cut into frames about this long
 const MJD_UNIX_EPOCH = 40587;
+const DEFAULT_GROUP = "exposure"; // frame grouping used unless the URL says otherwise
 
 let cfg = {
   fov: { min: 1, max: 20, default: 10 },
@@ -28,7 +29,7 @@ const state = {
   loading: false,
   abort: null,
   band: "all", // "all", "D1".."D6" or "c:<min>-<max>"
-  group: "pass",
+  group: DEFAULT_GROUP,
   mode: "image",
   zoom: null, // arcmin shown
   frame: 0,
@@ -321,7 +322,7 @@ function framesFor(band, group) {
 /** Once everything has arrived, prepare every band in the background so
  *  that switching never has to wait. */
 function precompute() {
-  const todo = ["all", ...Object.keys(cfg.bands)].flatMap((b) => ["pass", "day", "exposure"].map((g) => [b, g]));
+  const todo = ["all", ...Object.keys(cfg.bands)].flatMap((b) => ["exposure", "day", "pass"].map((g) => [b, g]));
   const loadedFor = state.field;
   const step = () => {
     if (state.field !== loadedFor || state.loading || !todo.length) return;
@@ -620,7 +621,7 @@ function syncUrl(q) {
   if (src.end) p.set("end", src.end);
   if (state.band !== "all") p.set("band", state.band);
   if (state.zoom && state.field && state.zoom !== state.field.fov_arcmin) p.set("zoom", state.zoom);
-  if (state.group !== "pass") p.set("group", state.group);
+  if (state.group !== DEFAULT_GROUP) p.set("group", state.group);
   history.replaceState(null, "", `?${p}`);
 }
 

@@ -36,8 +36,9 @@ and `nasa-irsa-spherex.s3.amazonaws.com` (image data).
 - **Dates**: from 2025-04-01 to today.
 - **Wavelength**: all light, one of the six detector bands, or a custom range
   between 0.75 and 5.0 µm.
-- **Frames**: one per survey pass (about six months apart), per day, or per
-  exposure; shown as images or as the difference from the average.
+- **Frames**: one per exposure (the default), per day, or per survey pass
+  (about six months apart); shown as images or as the difference from the
+  average.
 - Space plays/pauses; the arrow keys step through frames.
 
 All exposures of the field are downloaded once. Changing the wavelength
