@@ -334,6 +334,7 @@ function framesFor(band, group) {
 function precompute() {
   // Only what the current view needs: preparing every view at once keeps the
   // page too busy to answer clicks promptly.
+  if (!state.field || !state.exposures.length) return; // nothing loaded yet
   const group = currentGroup();
   const todo = ["all", ...Object.keys(cfg.bands)].filter((b) => !state.cache.has(`${b}|${group}`));
   const loadedFor = state.field;
@@ -379,10 +380,18 @@ function rebuild() {
 }
 
 function setView(view) {
+  const changed = state.view !== view;
   state.view = view;
   rebuild();
+  if (window.Compare) Compare.render(); // also marks the selected button before anything is loaded
   syncUrl();
   precompute();
+  if (changed) { // draw the eye to the explanation of the new view
+    const box = $("context");
+    box.classList.remove("flash");
+    void box.offsetWidth;
+    box.classList.add("flash");
+  }
 }
 
 // ------------------------------------------------------------ rendering ---
@@ -733,6 +742,16 @@ async function init() {
   $("mode").onchange = () => { state.mode = $("mode").value; state.limits = null; draw(); Compare.render(); };
   $("view-compare").onclick = () => setView("compare");
   $("view-explore").onclick = () => setView("explore");
+  for (const id of ["view-compare", "view-explore"]) {
+    // Arrow keys move between the two, as in any radio group.
+    $(id).addEventListener("keydown", (ev) => {
+      if (!["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"].includes(ev.key)) return;
+      ev.preventDefault();
+      const other = id === "view-compare" ? "explore" : "compare";
+      setView(other);
+      $(`view-${other}`).focus();
+    });
+  }
   for (const id of ["stretch", "invert", "smooth", "cross"]) $(id).onchange = draw;
   $("white").oninput = draw;
   $("wapply").onclick = () => {

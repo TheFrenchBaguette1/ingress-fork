@@ -277,8 +277,8 @@ const Compare = (() => {
     const exploring = state.view === "explore";
     $("view-compare").classList.toggle("on", !exploring);
     $("view-explore").classList.toggle("on", exploring);
-    $("view-compare").setAttribute("aria-pressed", String(!exploring));
-    $("view-explore").setAttribute("aria-pressed", String(exploring));
+    $("view-compare").setAttribute("aria-checked", String(!exploring));
+    $("view-explore").setAttribute("aria-checked", String(exploring));
     $("group-row").hidden = !exploring;
     $("mode").options[1].textContent = exploring ? "difference from the average (mixes wavelengths)" : "difference from the average of the matched epochs";
     if (!state.field || !state.exposures.length) { box.hidden = true; return; }

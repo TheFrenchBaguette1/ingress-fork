@@ -58,12 +58,14 @@
   </form>
 
   <section class="viewer">
-    <div class="views" role="group" aria-label="What to look at">
-      <button id="view-compare" type="button" class="on" aria-pressed="true">
-        Compare over time<small>the same wavelengths in every frame, one frame per epoch</small>
+    <div class="views" role="radiogroup" aria-label="What to look at">
+      <button id="view-compare" type="button" role="radio" aria-checked="true" class="on">
+        <span class="mark" aria-hidden="true"></span>
+        <span class="text"><b>Compare over time</b><small>Same wavelengths in every frame</small></span>
       </button>
-      <button id="view-explore" type="button" aria-pressed="false">
-        Explore wavelengths<small>every exposure, each at its own wavelength</small>
+      <button id="view-explore" type="button" role="radio" aria-checked="false">
+        <span class="mark" aria-hidden="true"></span>
+        <span class="text"><b>Explore wavelengths</b><small>Each frame at its own wavelength</small></span>
       </button>
     </div>
     <div class="stage">
