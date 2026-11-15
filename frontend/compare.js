@@ -279,7 +279,10 @@ const Compare = (() => {
     $("view-explore").classList.toggle("on", exploring);
     $("view-compare").setAttribute("aria-checked", String(!exploring));
     $("view-explore").setAttribute("aria-checked", String(exploring));
-    $("group-row").hidden = !exploring;
+    // The frame grouping only applies when exploring. Keep the control in
+    // view when comparing, switched off and with a pointer to where it works.
+    $("group").disabled = !exploring;
+    $("group-note").hidden = exploring;
     $("mode").options[1].textContent = exploring ? "difference from the average (mixes wavelengths)" : "difference from the average of the matched epochs";
     if (!state.field || !state.exposures.length) { box.hidden = true; return; }
     box.hidden = false;
