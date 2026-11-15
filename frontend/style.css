@@ -148,8 +148,9 @@ code { font-family: var(--mono); background: var(--surface); border: 1px solid v
    window's height, with the form on its left and the display controls on its right. */
 @media (min-width: 1100px) {
   .layout {
-    --side: clamp(300px, min(100vh - 262px, 100vw - 2 * var(--pad) - 748px), 1180px);
-    grid-template-columns: 340px var(--side) 360px; grid-template-rows: auto auto auto auto auto 1fr auto; justify-content: center;
+    --aside: 400px;
+    --side: clamp(300px, min(100vh - 262px, 100vw - 2 * var(--pad) - 388px - var(--aside)), 1180px);
+    grid-template-columns: 340px var(--side) var(--aside); grid-template-rows: auto auto auto auto auto 1fr auto auto; justify-content: center;
   }
   .viewer { display: contents; }
   #query { grid-column: 1; grid-row: 1 / span 6; }
@@ -159,9 +160,22 @@ code { font-family: var(--mono); background: var(--surface); border: 1px solid v
   #timeline { grid-column: 2; grid-row: 4; }
   .context { grid-column: 2; grid-row: 5; }
   .info { grid-column: 2; grid-row: 6; }
-  .layout .controls { grid-column: 3; grid-row: 1 / span 6; grid-template-columns: 1fr; margin-top: 0; }
-  .layout .measure { grid-column: 1 / -1; grid-row: 7; }
+  /* The period result sits beside the image; the display controls follow below. */
+  #period { grid-column: 3; grid-row: 1 / span 6; }
+  .layout .controls { grid-column: 2 / span 2; grid-row: 7; }
+  .layout .measure { grid-column: 1 / -1; grid-row: 8; }
 }
+/* On a very wide window the display controls fit beside the image as well. */
+@media (min-width: 1760px) {
+  .layout {
+    --aside: 440px;
+    --side: clamp(300px, min(100vh - 262px, 100vw - 2 * var(--pad) - 772px - var(--aside)), 1180px);
+    grid-template-columns: 340px var(--side) 360px var(--aside);
+  }
+  .layout .controls { grid-column: 3; grid-row: 1 / span 6; grid-template-columns: 1fr; margin-top: 0; }
+  #period { grid-column: 4; }
+}
+@media (max-width: 1099px) { #period { grid-column: 1 / -1; margin-top: 22px; } }
 @media (max-width: 860px) { .layout { grid-template-columns: 1fr; } }
 
 .panel, fieldset, .measure, .transport { background: rgba(11, 14, 21, 0.92); border: 1px solid var(--line); border-radius: 3px; }
@@ -313,6 +327,44 @@ input[type=range], input[type=checkbox] { accent-color: var(--accent); }
 .info:empty { display: none; }
 .info b { color: var(--text); font-weight: 600; }
 
+/* ------------------------------------------------------------- period --- */
+/* Period search for the selected object, and its check against a catalogue. */
+
+.period { position: relative; min-width: 0; }
+.period p { margin: 0 0 10px; font-size: 13.5px; color: #c9cdd6; }
+.period p.hint { font-size: 12px; color: var(--dim); }
+.period .verdict {
+  display: flex; align-items: center; gap: 9px; padding: 10px 12px; color: var(--text);
+  font-family: var(--display); font-stretch: 112%; font-weight: 600; font-size: 16px; line-height: 1.2; letter-spacing: -0.01em;
+  background: var(--bg); border: 1px solid var(--line); border-left: 3px solid var(--dim); border-radius: 0 2px 2px 0;
+}
+.period .verdict span { font-size: 17px; }
+.period .verdict.ok { border-left-color: #3fbf6a; } .period .verdict.ok span { color: #3fbf6a; }
+.period .verdict.warn { border-left-color: var(--accent); } .period .verdict.warn span { color: var(--accent); }
+.period .verdict.bad, .period .verdict.none { border-left-color: var(--bad); } .period .verdict.bad span, .period .verdict.none span { color: var(--bad); }
+.period .verdict.info { border-left-color: #3987e5; } .period .verdict.info span { color: #3987e5; }
+.period .figures { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 8px; margin: 0 0 10px; }
+.period .figures > div { padding: 10px 12px; background: var(--bg); border: 1px solid var(--line); border-radius: 2px; }
+.period .figures small { display: block; font-family: var(--mono); font-size: 11px; color: var(--dim); }
+.period .figures b { display: block; margin: 4px 0 2px; font-family: var(--display); font-stretch: 112%; font-weight: 600; font-size: 26px; line-height: 1.05; letter-spacing: -0.02em; color: var(--text); font-variant-numeric: tabular-nums; }
+.period .figures i { font-style: normal; font-size: 12px; color: var(--dim); }
+.period table { width: 100%; margin: 0 0 10px; border-collapse: collapse; font-size: 13px; font-variant-numeric: tabular-nums; }
+.period th { padding: 6px 8px 6px 0; text-align: left; font-weight: 400; color: var(--dim); border-bottom: 1px solid var(--line); }
+.period td { padding: 6px 0; text-align: right; font-family: var(--mono); font-size: 12px; white-space: nowrap; color: var(--text); border-bottom: 1px solid var(--line); }
+.period figure { margin: 14px 0 0; }
+.period figcaption { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 4px 12px; margin-bottom: 4px; font-size: 12px; }
+.period canvas { display: block; width: 100%; height: 220px; }
+.period .keys { display: inline-flex; gap: 12px; color: var(--dim); }
+.period .key { display: inline-flex; align-items: center; gap: 5px; }
+.period .key .dot { width: 8px; height: 8px; border-radius: 50%; }
+.period .key .line { width: 14px; height: 2px; }
+.period .key .band { width: 12px; height: 10px; background: rgba(57, 135, 229, 0.3); }
+.period .status { display: flex; align-items: center; gap: 8px; font-weight: 600; color: var(--text); }
+.period .caution span { color: var(--accent); }
+.spinner { width: 14px; height: 14px; border: 2px solid var(--line); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.8s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+#period-charts { display: grid; grid-template-columns: repeat(auto-fit, minmax(270px, 1fr)); gap: 0 18px; }
+
 /* ------------------------------------------------------------ measure --- */
 
 .measure { position: relative; margin-top: 22px; padding: 18px 20px 20px; }
@@ -336,6 +388,7 @@ input[type=range], input[type=checkbox] { accent-color: var(--accent); }
 .insight-model { font-family: var(--mono); font-size: 11px; color: var(--dim); }
 .insight-head button { padding: 4px 10px; font-size: 13px; }
 .insight-status { margin: 12px 0 0; font-size: 13px; color: var(--dim); }
+.insight button.primary { width: auto; margin-top: 12px; padding: 9px 18px; }
 .insight.busy .insight-status::after {
   content: ""; display: block; height: 2px; margin-top: 10px; background: linear-gradient(90deg, transparent, var(--accent), transparent) 0 0 / 40% 100% no-repeat var(--line);
   animation: reading 1.4s linear infinite;
@@ -437,6 +490,7 @@ footer p { margin: 0; max-width: 78ch; }
 @media (prefers-reduced-motion: reduce) {
   .turn, .context.flash, .insight.busy .insight-status::after { animation: none; }
   .modal, .modal-backdrop { transition: none; }
+  .spinner { animation: none; }
   .js .chapter { transition: none; }
 }
 

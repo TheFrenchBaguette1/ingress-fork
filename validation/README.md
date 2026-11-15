@@ -40,12 +40,16 @@ fitted with a sinusoid at every trial period from 120 to 500 days.
 | Nights of data | 167 over 518 days |
 | Best-fit period | **245 days** (1σ range 242 to 249) |
 | Catalogued period | 245.6 days |
-| Peak-to-peak amplitude | 0.58 mag |
+| Peak-to-peak amplitude | 0.57 mag |
 
 The recovered period agrees with the catalogue within its uncertainty,
 from data covering about two cycles. A single sinusoid accounts for
 50% of the variance; Mira light curves are not pure sinusoids and the
 amplitude depends on wavelength, so the rest is expected.
+
+The same calculation runs live in the app (`frontend/period.js`): opening
+the site with no field selected loads R Draconis and shows this comparison.
+The validation script calls that code, so the two cannot drift apart.
 
 ## Reproducing
 

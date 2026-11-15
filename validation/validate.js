@@ -21,7 +21,7 @@ const FILTERS = {
   J: ["j_m", 1594, [1.17, 1.33]], H: ["h_m", 1024, [1.51, 1.79]], Ks: ["k_m", 666.7, [2.03, 2.30]],
   W1: ["w1mpro", 309.54, [3.0, 3.8]], W2: ["w2mpro", 171.787, [4.1, 5.0]],
 };
-const R_DRA = { ra: 248.1675, dec: 66.755, period: 245.6 }; // period in days, GCVS
+const R_DRA = { ra: 248.1675, dec: 66.755 }; // its catalogued period is held in frontend/period.js
 
 const csv = (f) => {
   const [head, ...rows] = fs.readFileSync(path.join(__dirname, f), "utf8").trim().split("\n");
@@ -81,48 +81,20 @@ async function fluxCheck(page) {
   return { stars: rows, summary };
 }
 
-/** Least-squares sinusoid of fixed period; returns chi-square and amplitude. */
-function sineFit(t, y, w, P) {
-  const A = [[0, 0, 0], [0, 0, 0], [0, 0, 0]], b = [0, 0, 0];
-  t.forEach((ti, k) => {
-    const f = [1, Math.sin((2 * Math.PI * ti) / P), Math.cos((2 * Math.PI * ti) / P)];
-    for (let i = 0; i < 3; i++) { b[i] += w[k] * f[i] * y[k]; for (let j = 0; j < 3; j++) A[i][j] += w[k] * f[i] * f[j]; }
-  });
-  for (let i = 0; i < 3; i++) for (let j = i + 1; j < 3; j++) { const m = A[j][i] / A[i][i]; for (let k = 0; k < 3; k++) A[j][k] -= m * A[i][k]; b[j] -= m * b[i]; }
-  const x = [0, 0, 0];
-  for (let i = 2; i >= 0; i--) x[i] = (b[i] - A[i].slice(i + 1).reduce((s, a, k) => s + a * x[i + 1 + k], 0)) / A[i][i];
-  let chi = 0;
-  t.forEach((ti, k) => { const m = x[0] + x[1] * Math.sin((2 * Math.PI * ti) / P) + x[2] * Math.cos((2 * Math.PI * ti) / P); chi += w[k] * (y[k] - m) ** 2; });
-  return { chi, amplitude: Math.hypot(x[1], x[2]) };
-}
-
 async function periodCheck(page) {
+  // The page's own period search (frontend/period.js), on the page's own
+  // measurements of the star.
   await openField(page, R_DRA);
-  const m = await measure(page, R_DRA);
-  // Nightly means of relative brightness, as magnitudes.
-  const nights = new Map();
-  for (const p of m.points) {
-    if (!(p.rel > 0) || !(p.relErr > 0)) continue;
-    const k = Math.floor(p.mjd), n = nights.get(k) || { sw: 0, swx: 0, n: 0 };
-    const w = 1 / p.relErr ** 2; n.sw += w; n.swx += w * p.rel; n.n++; nights.set(k, n);
-  }
-  const t = [], y = [], w = [];
-  for (const [k, n] of nights) {
-    if (n.n < 2) continue;
-    const rel = n.swx / n.sw, err = Math.hypot(1 / Math.sqrt(n.sw), 0.03) / rel * 1.0857; // 3% floor
-    t.push(k); y.push(-2.5 * Math.log10(rel)); w.push(1 / err ** 2);
-  }
-  let best = null;
-  const scan = [];
-  for (let P = 120; P <= 500; P += 1) { const f = sineFit(t, y, w, P); scan.push([P, f.chi]); if (!best || f.chi < best.chi) best = { P, ...f }; }
-  // Rescale so the best fit has chi-square per degree of freedom of one, then take delta chi-square = 1.
-  const scale = best.chi / (t.length - 4);
-  const ok = scan.filter(([, chi]) => (chi - best.chi) / scale <= 1).map(([P]) => P);
-  const flat = sineFit(t, y, w, 1e9).chi;
-  console.log(`\n2. R Draconis pulsation (${t.length} nights over ${Math.max(...t) - Math.min(...t)} days, halo photometry)`);
-  console.log(`   best-fit period ${best.P} days (1-sigma range ${Math.min(...ok)} to ${Math.max(...ok)}); catalogued ${R_DRA.period} days`);
-  console.log(`   amplitude ${(2 * best.amplitude).toFixed(2)} mag peak to peak; sinusoid removes ${(100 * (1 - best.chi / flat)).toFixed(0)}% of the variance of a constant`);
-  return { nights: t.length, span_days: Math.max(...t) - Math.min(...t), best_period: best.P, range: [Math.min(...ok), Math.max(...ok)], catalogued: R_DRA.period, peak_to_peak_mag: +(2 * best.amplitude).toFixed(2), variance_removed: +(1 - best.chi / flat).toFixed(2) };
+  const a = await page.evaluate(([ra, dec]) => {
+    Measure.pickSky(ra, dec);
+    const r = Period.result(), ref = Period.referenceFor(Measure.picked());
+    return { status: r.status, nights: r.nights, span: r.span, period: r.period, lo: r.lo, hi: r.hi, amplitude: r.amplitude, explained: r.explained, ref: ref && ref.period, cmp: ref && r.status === "ok" ? Period.compare(r, ref) : null };
+  }, [R_DRA.ra, R_DRA.dec]);
+  console.log(`\n2. R Draconis pulsation (${a.nights} nights over ${a.span} days, halo photometry)`);
+  if (a.status !== "ok") { console.log(`   no period reported (${a.status})`); return a; }
+  console.log(`   best-fit period ${a.period} days (1-sigma range ${a.lo} to ${a.hi}); catalogued ${a.ref} days: ${a.cmp.level} (${a.cmp.nSigma.toFixed(2)} sigma)`);
+  console.log(`   amplitude ${a.amplitude.toFixed(2)} mag peak to peak; sinusoid explains ${(100 * a.explained).toFixed(0)}% of the variance about a constant`);
+  return { nights: a.nights, span_days: a.span, best_period: a.period, range: [a.lo, a.hi], catalogued: a.ref, consistency: a.cmp.level, n_sigma: +a.cmp.nSigma.toFixed(2), peak_to_peak_mag: +a.amplitude.toFixed(2), variance_removed: +a.explained.toFixed(2) };
 }
 
 (async () => {

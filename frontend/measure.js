@@ -232,7 +232,8 @@ const Measure = (() => {
     const ctx = cv.getContext("2d");
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     ctx.clearRect(0, 0, W, H);
-    const box = { l: 66, r: W - 16, t: 34, b: H - 54 };
+    const labelled = id === "spec-chart" || id === "lc-chart";
+    const box = { l: 66, r: W - 16, t: labelled ? 34 : 12, b: H - 54 };
     const X = (v) => box.l + ((v - x[0]) / (x[1] - x[0])) * (box.r - box.l);
     const Y = (v) => box.b - ((v - y[0]) / (y[1] - y[0])) * (box.b - box.t);
     ctx.font = CHART_FONT;
@@ -426,15 +427,17 @@ const Measure = (() => {
     else fallback();
   }
 
-  function hover(id, ev) {
-    const tip = $("chart-tip"), r = $(id).getBoundingClientRect();
+  /** Show the tooltip of the mark nearest the pointer. `tipId` is the
+   *  tooltip element and `hostId` the positioned element that contains it. */
+  function hover(id, ev, tipId = "chart-tip", hostId = "measure") {
+    const tip = $(tipId), r = $(id).getBoundingClientRect();
     const x = ev.clientX - r.left, y = ev.clientY - r.top;
     let best = null, bd = 18 ** 2;
     for (const h of hits.get(id) || []) { const d = (h.x - x) ** 2 + (h.y - y) ** 2; if (d < bd) { bd = d; best = h; } }
     tip.hidden = !best;
     if (!best) return;
     tip.innerHTML = best.html;
-    const host = $("measure").getBoundingClientRect();
+    const host = $(hostId).getBoundingClientRect();
     tip.style.left = `${Math.min(r.left - host.left + best.x + 12, host.width - 190)}px`;
     tip.style.top = `${r.top - host.top + best.y + 12}px`;
   }
@@ -456,11 +459,13 @@ const Measure = (() => {
 
   // ------------------------------------------------------------ public ---
 
-  function refresh() { compute(); render(); if (window.Insight) Insight.update(); }
+  function refresh() { compute(); render(); if (window.Period) Period.update(); if (window.Insight) Insight.update(); }
 
   return {
     refresh,
-    clear() { pick = null; result = null; render(); if (window.Insight) Insight.update(); },
+    chart: frame, // shared with the period panel
+    hover,
+    clear() { pick = null; result = null; render(); if (window.Period) Period.update(); if (window.Insight) Insight.update(); },
     /** Sky position of the selected object, or null. */
     picked() { return pick && state.field ? pixelToSky(pick.i, pick.j) : null; },
     /** The current measurements (see compute), or null. */

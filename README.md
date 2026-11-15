@@ -160,6 +160,22 @@ ready so they open in seconds:
 After a data release, refresh the bundled lists with
 `python -m backend.presets` and commit the result.
 
+## Period search and the opening demonstration
+
+Opened with no field in the address, Ingress loads R Draconis, selects it
+and runs the period search (`frontend/period.js`) on the result. The panel
+beside the image shows the recovered period with its 1σ range next to the
+catalogued 245.6 days, their absolute and percentage difference, and whether
+the two are consistent. Nothing is fixed in advance: the figures are
+computed from the exposures loaded, and change if the dates do.
+
+The same search runs for any object clicked. Stars with a catalogued period
+(the `REFERENCES` list in `frontend/period.js`) are compared with it; others
+get a period only if the data support one: enough nights spread over at
+least six months, outlying nights set aside, 30% of the variation explained,
+and the same period recovered from the even and the odd nights separately.
+Most fields have too few nights, and the panel says so.
+
 ## Updating for new data releases
 
 The image collections searched are set in one place, `COLLECTIONS` in

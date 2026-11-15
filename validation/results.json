@@ -120,7 +120,9 @@
    249
   ],
   "catalogued": 245.6,
-  "peak_to_peak_mag": 0.58,
+  "consistency": "consistent",
+  "n_sigma": 0.15,
+  "peak_to_peak_mag": 0.57,
   "variance_removed": 0.5
  }
 }

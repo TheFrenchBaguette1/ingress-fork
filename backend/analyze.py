@@ -10,6 +10,8 @@ from a `.env` file in the project folder:
 
     OPENAI_API_KEY=sk-...
     OPENAI_MODEL=gpt-6-astra        (optional)
+    OPENAI_SERVICE_TIER=fast        (optional; "default" for standard speed and price)
+    OPENAI_REASONING_EFFORT=low     (optional)
 
 Without a key the endpoint answers "not configured" and the rest of the app
 is unaffected.
@@ -63,6 +65,23 @@ def _settings() -> tuple[str, str, str]:
     model = os.environ.get("OPENAI_MODEL", "").strip() or DEFAULT_MODEL
     base = os.environ.get("OPENAI_BASE_URL", "").strip().rstrip("/") or "https://api.openai.com/v1"
     return key, model, base
+
+
+def _speed() -> dict:
+    """Request options that trade cost and depth of reasoning for speed.
+
+    Fast mode (service_tier "fast") is OpenAI's quicker processing tier and is
+    billed at a higher rate; low reasoning effort is enough for explaining
+    numbers that are already computed.
+    """
+    tier = os.environ.get("OPENAI_SERVICE_TIER", "fast").strip().lower()
+    effort = os.environ.get("OPENAI_REASONING_EFFORT", "low").strip().lower()
+    options = {}
+    if tier and tier != "default":
+        options["service_tier"] = tier
+    if effort:
+        options["reasoning_effort"] = effort
+    return options
 
 
 LEVELS = ["significant", "possibly significant", "not significant", "cannot tell"]
@@ -123,6 +142,12 @@ from the same wavelength slices in every epoch, so a difference between frames i
 the report says how many slices and epochs could be matched, how well the epochs line up (offset in \
 arcseconds, star width), and whether a fair comparison exists at all (status "none" means it does not). \
 In the explore view frames are at different wavelengths, so differences between them mix colour with time.
+- "period_search", when present, is the tool's search for a repeating rise and fall in the object's \
+brightness, tried at periods from 120 to 500 days. It reports a period only if strict checks pass \
+(enough nights, enough of the variation explained, and the same period found again from every other \
+night separately); otherwise its status says why none is reported. For a star with a catalogued period \
+it also says whether the recovered period is consistent with the catalogue. A period found here is a \
+candidate, not a discovery.
 - Limits of the measurement: the aperture is a 9.5 arcsecond circle and SPHEREx pixels are 6.15 arcseconds, \
 so close neighbours blend into the measurement; fluxes are not corrected for light outside the aperture \
 and read about 4 to 13 percent low against the 2MASS and WISE catalogues; saturated measurements are \
@@ -148,6 +173,8 @@ Write these findings, in this order, leaving one out only if the data for it is 
 3. Band by band: whether the six bands agree with each other and with the combined result.
 4. The image comparison: whether the frames on screen are a fair comparison over time, and what limits it.
 5. Data quality: how many measurements and passes, saturation, and anything that weakens the result.
+6. Repeating pattern (only if "period_search" is present): whether a regular cycle was found, how long \
+it is, and, where there is a catalogued value, whether the two agree. If none is reported, say so.
 
 The first layer, in everyday language:
 - "headline": one sentence that answers "did this object change?" directly, for example "This star looks \
@@ -156,7 +183,7 @@ steady: its brightness did not change in any way the data can confirm." At most 
 be. At most 60 words.
 - each finding's "plain": one sentence, at most 22 words, giving that finding's takeaway.
 - each finding's "title": at most four everyday words. Use these, in order: "Its colours", "Change over \
-time", "Do the colours agree", "The pictures on screen", "How good the data is".
+time", "Do the colours agree", "The pictures on screen", "How good the data is", "A repeating cycle".
 In these fields use no numbers, no units, no symbols and no technical terms. Do not write sigma, \
 flux, millijansky, micrometre, aperture, epoch, saturated, band 1 or pass 3. Say "infrared colours" for \
 wavelengths or bands, "visits" for passes, "the tool's test for a real change" for the sigma threshold, \
@@ -236,15 +263,26 @@ def analyze(request: Request, data: dict = Body(...)):
         ],
         "response_format": {"type": "json_schema", "json_schema": {"name": "object_reading", "strict": True, "schema": SCHEMA}},
         "max_completion_tokens": 6000,
+        **_speed(),
     }
 
-    try:  # FastAPI runs this handler on a worker thread, so a blocking call is fine
-        r = requests.post(
+    def send():  # FastAPI runs this handler on a worker thread, so a blocking call is fine
+        return requests.post(
             f"{base}/chat/completions",
             headers={"Authorization": f"Bearer {key}", "Content-Type": "application/json"},
             json=body,
             timeout=(10, 120),
         )
+
+    try:
+        r = send()
+        # An account or model without a speed option answers 400 naming it:
+        # drop that option and ask again at standard settings.
+        for option in ("service_tier", "reasoning_effort"):
+            if r.status_code == 400 and option in body and option in r.text:
+                log.warning("AI reading: %s=%s was not accepted; retrying without it", option, body[option])
+                del body[option]
+                r = send()
     except requests.RequestException as e:
         log.warning("AI reading: request failed: %s", type(e).__name__)
         _fail(502, "unreachable", "OpenAI could not be reached. Try again in a moment.")
@@ -278,4 +316,5 @@ def analyze(request: Request, data: dict = Body(...)):
     except (KeyError, IndexError, TypeError, ValueError):
         log.warning("AI reading: unreadable answer from OpenAI")
         _fail(502, "unreadable", "The model's answer could not be read. Try again.")
-    return {"reading": reading, "model": model}
+    answer = r.json()
+    return {"reading": reading, "model": model, "tier": answer.get("service_tier") or body.get("service_tier") or "default"}

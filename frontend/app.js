@@ -13,6 +13,7 @@ const ZOOM_STEPS = [1, 2, 3, 5, 10, 15, 20]; // arcmin
 const PASS_GAP_DAYS = 30; // a longer pause in coverage starts a new survey pass
 const PASS_MAX_DAYS = 45; // much longer continuous coverage is cut into frames about this long
 const MJD_UNIX_EPOCH = 40587;
+const DEFAULT_TARGET = { name: "R Draconis", ra: 248.1675, dec: 66.755 }; // loaded when no field is given
 const DEFAULT_GROUP = "exposure"; // frame grouping used unless the URL says otherwise
 
 let cfg = {
@@ -731,6 +732,8 @@ async function init() {
     if (!$("preset").value) return;
     $("coords").value = $("preset").value;
     echoCoords();
+    // A test target sits at the field centre: select it for measurement too.
+    state.wantObj = $("preset").value.split(" ").map(Number);
     $("query").requestSubmit();
   });
   $("play").onclick = () => setPlaying(!state.playing);
@@ -781,6 +784,15 @@ async function init() {
     const q = validateForm();
     if (q.error) showError(q.error);
     else load(q);
+  } else {
+    // Opened with no field in the address: show the demonstration target,
+    // selected for measurement so its period analysis runs unprompted.
+    const t = (cfg.presets || []).find((p) => p.name === DEFAULT_TARGET.name) || DEFAULT_TARGET;
+    $("coords").value = `${t.ra} ${t.dec}`;
+    echoCoords();
+    state.wantObj = [t.ra, t.dec];
+    const q = validateForm();
+    if (!q.error) load(q);
   }
 }
 

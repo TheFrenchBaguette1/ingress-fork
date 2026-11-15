@@ -1,11 +1,15 @@
 "use strict";
 /* AI reading of a measured object.
  *
- * Once an object has been clicked and every exposure has loaded, the numbers
+ * Once an object has been selected and every exposure has loaded, the numbers
  * the page has already computed (spectrum, change between survey passes, and
  * how fair the comparison over time is) are sent to the server, which asks an
  * OpenAI model to say what each means and whether it is significant. The
  * key lives on the server; this file never sees it.
+ *
+ * A reading costs the site's owner money, so it starts by itself only for an
+ * object the visitor clicked. For one selected automatically (the target the
+ * page opens on, a test target, a shared link) it waits for a button press.
  *
  * Uses the globals of app.js (state, cfg, $, fmtDate, fmtSexa) and Measure.
  */
@@ -21,6 +25,7 @@ const Insight = (() => {
   let enabled = null; // unknown until the server says whether a key is set
   let shownFor = null; // which measurement the panel currently describes
   let timer = 0, inFlight = null;
+  let clicked = false; // the visitor has just clicked the image to choose an object
   const cache = new Map();
 
   const num = (v, digits = 4) => (Number.isFinite(v) ? +v.toPrecision(digits) : null);
@@ -97,6 +102,21 @@ const Insight = (() => {
         })),
       };
     }
+    // The period search, when the page has one.
+    const per = window.Period && Period.result && Period.result();
+    if (per) {
+      const ref = Period.referenceFor ? Period.referenceFor(obj) : null;
+      const cmp = per.status === "ok" && ref && Period.compare ? Period.compare(per, ref) : null;
+      data.period_search = {
+        status: per.status === "ok" ? "period reported" : "no period reported", why_not: per.why || null,
+        period_days: per.period ?? null, range_1sigma_days: per.lo != null ? [per.lo, per.hi] : null,
+        variation_explained: num(per.explained, 3), amplitude_mag: num(per.amplitude, 3),
+        periods_from_alternate_nights_days: per.halves ? per.halves.map((x) => x.period) : null,
+        nights: per.nights ?? null, span_days: per.span ?? null, outlying_nights_set_aside: per.clipped ?? null,
+        catalogue: ref ? { name: ref.name, type: ref.type, period_days: ref.period, source: ref.source,
+          agreement: cmp ? cmp.level : null, difference_days: cmp ? num(cmp.diff, 3) : null, difference_sigma: cmp ? num(cmp.nSigma, 3) : null } : null,
+      };
+    }
     const panel = $("context");
     if (panel && !panel.hidden) data.comparison.panel_text = (panel.innerText || "").replace(/\s+/g, " ").slice(0, 1800);
     return data;
@@ -164,8 +184,10 @@ const Insight = (() => {
       more.append(block);
     }
     body.append(more);
-    $("insight-model").textContent = answer.model ? `Model: ${answer.model}` : "";
+    const fast = answer.tier && answer.tier !== "default" ? `, ${answer.tier} mode` : "";
+    $("insight-model").textContent = answer.model ? `Model: ${answer.model}${fast}` : "";
     $("insight-again").hidden = false;
+    $("insight-start").hidden = true;
     status("");
   }
 
@@ -188,6 +210,7 @@ const Insight = (() => {
       if (shownFor !== key) return;
       $("insight-body").textContent = "";
       $("insight-again").hidden = enabled === false;
+      $("insight-start").hidden = true;
       status(e.message);
     } finally {
       if (inFlight === ctl) inFlight = null;
@@ -211,17 +234,24 @@ const Insight = (() => {
     box.hidden = false;
     if (state.loading) {
       cancel(); shownFor = null;
-      $("insight-body").textContent = ""; $("insight-again").hidden = true;
-      status("The AI reading starts once every exposure has loaded.");
+      $("insight-body").textContent = ""; $("insight-again").hidden = true; $("insight-start").hidden = true;
+      status(clicked ? "The AI reading starts once every exposure has loaded." : "An AI reading is available once every exposure has loaded.");
       return;
     }
     const key = keyOf(obj);
-    if (key === shownFor && !force) return; // already shown, or on its way
+    if (key === shownFor && !force) return; // already shown, offered, or on its way
     cancel();
     shownFor = key;
     if (force) cache.delete(key);
     if (cache.has(key)) { show(cache.get(key)); return; }
     $("insight-body").textContent = ""; $("insight-again").hidden = true;
+    if (!clicked && !force) { // selected automatically: offer, do not spend
+      $("insight-start").hidden = false;
+      status("Ask an AI model to explain these measurements in plain words.");
+      return;
+    }
+    clicked = false;
+    $("insight-start").hidden = true;
     status("Reading the measurements…", true);
     // Wait a moment so a quick run of clicks asks only once, for the last object.
     timer = setTimeout(() => run(key, snapshot(Measure.result(), Measure.picked())), force ? 0 : 700);
@@ -229,6 +259,9 @@ const Insight = (() => {
 
   async function init() {
     $("insight-again").onclick = () => update(true);
+    $("insight-start").onclick = () => update(true);
+    // A press on the image is the visitor choosing an object themselves.
+    $("view").addEventListener("pointerdown", () => { clicked = true; }, true);
     try {
       const resp = await fetch("api/analyze");
       enabled = resp.ok ? !!(await resp.json()).enabled : false;
