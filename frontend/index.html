@@ -58,6 +58,14 @@
   </form>
 
   <section class="viewer">
+    <div class="views" role="group" aria-label="What to look at">
+      <button id="view-compare" type="button" class="on" aria-pressed="true">
+        Compare over time<small>the same wavelengths in every frame, one frame per epoch</small>
+      </button>
+      <button id="view-explore" type="button" aria-pressed="false">
+        Explore wavelengths<small>every exposure, each at its own wavelength</small>
+      </button>
+    </div>
     <div class="stage">
       <canvas id="view" width="640" height="640" aria-label="SPHEREx image animation"></canvas>
       <div id="empty" class="empty">Enter coordinates and press <b>Load images</b>.</div>
@@ -76,6 +84,8 @@
       <span id="speed-val" class="num">4 fps</span>
     </div>
     <canvas id="timeline" width="640" height="46" aria-label="Exposure timeline"></canvas>
+
+    <section id="context" class="context" hidden aria-live="polite"></section>
 
     <div class="controls">
       <fieldset>
@@ -98,7 +108,7 @@
 
       <fieldset>
         <legend>Frames</legend>
-        <div class="row tight">
+        <div class="row tight" id="group-row">
           <label class="inline" for="group">One frame per</label>
           <select id="group">
             <option value="exposure">exposure</option>
@@ -171,6 +181,7 @@
 </footer>
 
 <script src="app.js"></script>
+<script src="compare.js"></script>
 <script src="measure.js"></script>
 <script>Measure.init();</script>
 </body>

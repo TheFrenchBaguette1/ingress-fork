@@ -29,6 +29,7 @@ const state = {
   loading: false,
   abort: null,
   band: "all", // "all", "D1".."D6" or "c:<min>-<max>"
+  view: "compare", // "compare": same wavelengths per epoch; "explore": any exposure
   group: DEFAULT_GROUP,
   mode: "image",
   zoom: null, // arcmin shown
@@ -324,28 +325,39 @@ function buildFrames(band, group) {
 
 function framesFor(band, group) {
   const key = `${band}|${group}`;
-  if (!state.cache.has(key)) state.cache.set(key, buildFrames(band, group));
+  if (!state.cache.has(key)) state.cache.set(key, group === "matched" ? Compare.build(band) : buildFrames(band, group));
   return state.cache.get(key);
 }
 
 /** Once everything has arrived, prepare every band in the background so
  *  that switching never has to wait. */
 function precompute() {
-  const todo = ["all", ...Object.keys(cfg.bands)].flatMap((b) => ["exposure", "day", "pass"].map((g) => [b, g]));
+  // Only what the current view needs: preparing every view at once keeps the
+  // page too busy to answer clicks promptly.
+  const group = currentGroup();
+  const todo = ["all", ...Object.keys(cfg.bands)].filter((b) => !state.cache.has(`${b}|${group}`));
   const loadedFor = state.field;
+  clearTimeout(precompute.timer);
   const step = () => {
-    if (state.field !== loadedFor || state.loading || !todo.length) return;
-    framesFor(...todo.shift());
-    setTimeout(step, 0);
+    if (state.field !== loadedFor || state.loading || currentGroup() !== group || !todo.length) return;
+    framesFor(todo.shift(), group);
+    precompute.timer = setTimeout(step, 30);
   };
-  setTimeout(step, 50);
+  precompute.timer = setTimeout(step, 50);
+}
+
+/** How frames are formed in the current view. Comparing over time uses
+ *  wavelength-matched epochs; matching waits until everything has arrived,
+ *  and until then plain per-pass averages serve as a preview. */
+function currentGroup() {
+  return state.view === "compare" ? (state.loading ? "pass" : "matched") : state.group;
 }
 
 function rebuild() {
-  if (!state.field || !state.exposures.length) { draw(); return; }
+  if (!state.field || !state.exposures.length) { draw(); if (window.Compare) Compare.render(); return; }
   if (state.loading) state.cache.clear(); // more exposures have arrived
   const keepTime = state.frames[state.frame] && state.frames[state.frame].t0;
-  state.frames = framesFor(state.band, state.group);
+  state.frames = framesFor(state.band, currentGroup());
   state.limits = null;
   // Stay on the same moment in time when the band changes.
   let idx = 0;
@@ -362,7 +374,15 @@ function rebuild() {
   $("compass").hidden = !state.frames.length;
   draw();
   drawTimeline();
+  if (window.Compare) Compare.render();
   if (window.Measure) Measure.refresh();
+}
+
+function setView(view) {
+  state.view = view;
+  rebuild();
+  syncUrl();
+  precompute();
 }
 
 // ------------------------------------------------------------ rendering ---
@@ -478,7 +498,14 @@ function draw() {
   if (window.Measure) Measure.overlay(ctx, (i, j) => [((i + 0.5 - x0) / m) * size, (1 - (j + 0.5 - x0) / m) * size], u);
 
   const when = f.t1 - f.t0 < 0.02 ? fmtDateTime(f.t0) + " UTC" : `${fmtDate(f.t0)} → ${fmtDate(f.t1)}`;
-  $("frame-label").textContent = `${state.frame + 1}/${state.frames.length} · ${when}`;
+  const waves = f.n > 1 ? `${f.wmin.toFixed(2)}–${f.wmax.toFixed(2)} µm` : `${f.wave.toFixed(2)} µm`;
+  const report = state.frames.report;
+  let label;
+  if (state.view === "explore") label = `${state.frame + 1}/${state.frames.length} · ${when} · wavelength ${waves}`;
+  else if (!report) label = `Preview ${state.frame + 1}/${state.frames.length} · ${when}`;
+  else if (report.status === "none") label = `Single epoch · ${when} · not a comparison`;
+  else label = `Epoch ${f.epoch + 1} · ${when} · same wavelengths in every frame`;
+  $("frame-label").textContent = label + (state.mode === "diff" ? " · difference" : "");
   $("frame").value = state.frame;
   const flagNames = Object.entries(cfg.flag_bits).filter(([bit]) => f.flags & (1 << bit)).map(([, name]) => name);
   const fl = state.field;
@@ -633,7 +660,10 @@ function syncUrl(q) {
   if (src.end) p.set("end", src.end);
   if (state.band !== "all") p.set("band", state.band);
   if (state.zoom && state.field && state.zoom !== state.field.fov_arcmin) p.set("zoom", state.zoom);
-  if (state.group !== DEFAULT_GROUP) p.set("group", state.group);
+  if (state.view === "explore") {
+    p.set("view", "explore");
+    if (state.group !== DEFAULT_GROUP) p.set("group", state.group);
+  }
   const obj = window.Measure && Measure.picked();
   if (obj) p.set("obj", `${obj.ra.toFixed(5)},${obj.dec.toFixed(5)}`);
   history.replaceState(null, "", `?${p}`.replace("%2C", ","));
@@ -644,6 +674,8 @@ function readUrl() {
   const band = p.get("band");
   if (band && (band === "all" || cfg.bands[band] || /^c:[\d.]+-[\d.]+$/.test(band))) state.band = band;
   if (["pass", "day", "exposure"].includes(p.get("group"))) state.group = $("group").value = p.get("group");
+  // Links made before the two views existed carry only a frame grouping.
+  if (p.get("view") === "explore" || (!p.get("view") && p.get("group"))) state.view = "explore";
   if (Number(p.get("zoom")) > 0) state.wantZoom = Number(p.get("zoom"));
   const obj = (p.get("obj") || "").split(",").map(Number);
   if (obj.length === 2 && obj.every(Number.isFinite) && obj[0] >= 0 && obj[0] < 360 && Math.abs(obj[1]) <= 90) state.wantObj = obj;
@@ -697,8 +729,10 @@ async function init() {
   $("next").onclick = () => { setPlaying(false); step(1); };
   $("frame").oninput = () => { setPlaying(false); state.frame = Number($("frame").value); draw(); };
   $("speed").oninput = () => { $("speed-val").textContent = `${$("speed").value} fps`; };
-  $("group").onchange = () => { state.group = $("group").value; rebuild(); syncUrl(); };
-  $("mode").onchange = () => { state.mode = $("mode").value; state.limits = null; draw(); };
+  $("group").onchange = () => { state.group = $("group").value; rebuild(); syncUrl(); precompute(); };
+  $("mode").onchange = () => { state.mode = $("mode").value; state.limits = null; draw(); Compare.render(); };
+  $("view-compare").onclick = () => setView("compare");
+  $("view-explore").onclick = () => setView("explore");
   for (const id of ["stretch", "invert", "smooth", "cross"]) $(id).onchange = draw;
   $("white").oninput = draw;
   $("wapply").onclick = () => {

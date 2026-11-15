@@ -89,3 +89,28 @@ footer { padding: 10px 24px 28px; color: var(--dim); font-size: 12px; }
 .legend .key { display: inline-flex; align-items: center; gap: 6px; font-variant-numeric: tabular-nums; }
 .legend .key i { width: 10px; height: 10px; border-radius: 50%; }
 .tip { position: absolute; z-index: 5; width: 180px; padding: 6px 8px; font-size: 12px; background: #0c0f16; border: 1px solid var(--line); border-radius: 6px; pointer-events: none; font-variant-numeric: tabular-nums; }
+
+.views { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 10px; }
+.views button { text-align: left; padding: 9px 12px; font-weight: 600; }
+.views button small { display: block; margin-top: 2px; font-weight: 400; font-size: 12px; opacity: 0.8; }
+@media (max-width: 560px) { .views { grid-template-columns: 1fr; } }
+
+.context { margin-top: 12px; padding: 12px 14px; background: var(--panel); border: 1px solid var(--line); border-left: 4px solid var(--dim); border-radius: 8px; font-size: 13.5px; }
+.context.ok { border-left-color: #0ca30c; }
+.context.warn { border-left-color: var(--accent); }
+.context.none { border-left-color: var(--bad); }
+.context p { margin: 0 0 8px; }
+.context p:last-child { margin-bottom: 0; }
+.context .badge { font-weight: 700; font-size: 14.5px; }
+.context.ok .badge span { color: #0ca30c; }
+.context.warn .badge span, .context .caution span { color: var(--accent); }
+.context.none .badge span { color: var(--bad); }
+.context .fine { color: var(--dim); font-size: 12.5px; }
+.context table { width: 100%; border-collapse: collapse; margin: 4px 0 8px; font-variant-numeric: tabular-nums; font-size: 12.5px; }
+.context th { text-align: left; font-weight: 500; color: var(--dim); padding: 3px 10px 3px 0; border-bottom: 1px solid var(--line); }
+.context td { padding: 3px 10px 3px 0; border-bottom: 1px solid var(--line); }
+.context tr.out td { color: var(--dim); }
+.context details { margin-top: 8px; }
+.context summary { cursor: pointer; color: var(--dim); }
+.context ul { margin: 8px 0 0; padding-left: 18px; }
+.context li { margin-bottom: 6px; }
