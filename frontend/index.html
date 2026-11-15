@@ -11,6 +11,10 @@
 <header class="top">
   <h1>Ingress</h1>
   <p>Blink SPHEREx infrared images of any patch of sky to spot things that move or vary.</p>
+  <nav class="top-actions" aria-label="Information">
+    <button type="button" id="open-help" aria-haspopup="dialog">Help</button>
+    <button type="button" id="open-about" aria-haspopup="dialog">About</button>
+  </nav>
 </header>
 
 <main class="layout">
@@ -184,9 +188,185 @@
   Link to any field with <code>?ra=&lt;deg&gt;&amp;dec=&lt;deg&gt;&amp;fov=&lt;arcmin&gt;</code>.
 </footer>
 
+<div id="modal-backdrop" class="modal-backdrop" hidden>
+  <section id="dialog-help" class="modal" role="dialog" aria-modal="true" aria-labelledby="help-title" tabindex="-1" hidden>
+    <header><h2 id="help-title">How to use Ingress</h2><button type="button" class="modal-close" aria-label="Close">×</button></header>
+    <div class="modal-body">
+      <p class="lead">Ingress shows how a patch of sky looks in SPHEREx's infrared images, and how it has changed. Load a field, watch it blink, then click anything interesting to measure it.</p>
+
+      <h3>1. Choose a field</h3>
+      <dl>
+        <dt>Coordinates</dt>
+        <dd>Where to look, as right ascension then declination (ICRS). Decimal degrees (<code>133.7951 -7.2451</code>) or hours and degrees (<code>08h55m10.8s -7d14m42s</code>, <code>08:55:10.8 -07:14:42</code>) both work. The line underneath shows how your entry was read.</dd>
+        <dt>Or pick a test target</dt>
+        <dd>Five objects chosen to show different behaviour: a star that moves quickly across the sky, two brown dwarf systems and two variable stars. These are kept ready, so they load fastest.</dd>
+        <dt>Field of view to load</dt>
+        <dd>The width of the square of sky to fetch, from 1 to 20 arcminutes (the full Moon is about 30). Larger fields catch faster-moving objects but take longer to load. Up to about 12 arcminutes the image is drawn with 3.1″ pixels, half the size of SPHEREx's own 6.15″ pixels; larger fields are drawn more coarsely.</dd>
+        <dt>From / To</dt>
+        <dd>Only exposures taken between these dates are used. SPHEREx survey data begins in spring 2025.</dd>
+        <dt>Load images</dt>
+        <dd>Finds every SPHEREx exposure covering that position and downloads the piece you asked for. Frames appear while loading continues. Fields near the ecliptic poles have thousands of exposures; Ingress then loads an evenly spaced sample of 900 and tells you so.</dd>
+      </dl>
+
+      <h3>2. Choose what you are looking at</h3>
+      <p>This is the most important choice on the page. A SPHEREx exposure records each point of sky at <b>one wavelength</b>, and the wavelength differs from exposure to exposure. A star that is brighter at 2 µm than at 4 µm will appear to fade between two such exposures even though nothing happened to it.</p>
+      <dl>
+        <dt>Compare over time</dt>
+        <dd>One frame per epoch (each period when SPHEREx was observing this field, typically six months apart). Every frame is built from the <b>same wavelengths with the same weighting</b>, so a difference between frames is a change over time. Use this to find things that moved or changed brightness.</dd>
+        <dt>Explore wavelengths</dt>
+        <dd>One frame per exposure, day or survey pass, each at its own wavelength, which is printed on the image. Use this to see how the sky looks across the infrared, or to follow fast movers such as asteroids from day to day. Brightness changes here can be colour alone.</dd>
+        <dt>The panel under the image</dt>
+        <dd>States which of the two you are doing. When comparing, its table lists each epoch's dates, how many exposures were used, their mean wavelength, how far the epoch is offset from the others, and how its star images differ in width. It warns when the epochs are poorly matched, and says plainly when no fair comparison exists.</dd>
+      </dl>
+
+      <h3>3. Read the image</h3>
+      <dl>
+        <dt>Orientation and scale</dt>
+        <dd>North is up and east is to the left, as on the sky. The bar at lower right gives the scale in arcminutes (′) or arcseconds (″).</dd>
+        <dt>Crosshair</dt>
+        <dd>Marks the coordinates you entered. A fast-moving object may sit a little away from it, because catalogue positions are for an earlier date.</dd>
+        <dt>Corner label</dt>
+        <dd>The frame's dates and, when exploring, its wavelength.</dd>
+        <dt>Pointing at the image</dt>
+        <dd>Shows the sky position under the pointer and the surface brightness there in megajanskys per steradian, after the smooth sky glow has been removed.</dd>
+        <dt>Dark purple patches</dt>
+        <dd>No usable data: pixels the SPHEREx pipeline flagged as bad, or sky an exposure did not cover.</dd>
+        <dt>Very bright stars</dt>
+        <dd>Their centres overflow the detector. Ingress fills them with a flat white patch so they do not appear as holes; the patch carries no brightness information.</dd>
+      </dl>
+
+      <h3>4. Play the animation</h3>
+      <dl>
+        <dt>Play / Pause, ◀ ▶ and the slider</dt>
+        <dd>Run the animation or step through it one frame at a time. Blinking between frames is how the eye picks out an object that shifted: this is how Pluto was found. The space bar and arrow keys do the same.</dd>
+        <dt>Speed</dt>
+        <dd>Frames per second.</dd>
+        <dt>Timeline strip</dt>
+        <dd>Every tick is one exposure, placed by date. Its row and colour show which of the six detectors took it. Dim ticks are outside the wavelengths you have selected, and the amber box marks the frame on screen.</dd>
+      </dl>
+
+      <h3>5. Adjust the view</h3>
+      <dl>
+        <dt>Field of view</dt>
+        <dd>Zooms to a smaller square around the centre. This is instant because the data is already loaded.</dd>
+        <dt>Wavelength: All and Bands 1 to 6</dt>
+        <dd>SPHEREx has six detectors, each covering part of the range from 0.75 to 5.0 µm. Different bands reveal different things:
+          <ul>
+            <li><b>Bands 1 to 3 (0.75–2.42 µm)</b>: ordinary starlight; most stars are brightest here.</li>
+            <li><b>Band 4 (2.42–3.82 µm)</b>: contains the water-ice absorption near 3.0 µm.</li>
+            <li><b>Band 5 (3.81–4.42 µm)</b>: contains carbon dioxide ice near 4.27 µm.</li>
+            <li><b>Band 6 (4.41–5.0 µm)</b>: contains carbon monoxide near 4.67 µm. The coldest brown dwarfs, almost invisible at shorter wavelengths, are brightest in bands 5 and 6.</li>
+          </ul>
+        </dd>
+        <dt>Custom … to … µm, Apply</dt>
+        <dd>Any range you choose between 0.75 and 5.0 µm.</dd>
+        <dt>One frame per</dt>
+        <dd>When exploring: one frame per exposure (most frames, noisiest), per day, or per survey pass (fewest frames, deepest). It is switched off when comparing over time, which always uses one frame per epoch.</dd>
+        <dt>Show: images / difference</dt>
+        <dd>The difference view subtracts the average of all frames, so anything that stayed the same vanishes. An object that <b>moved</b> leaves a dark spot beside a bright one. An object that <b>changed brightness</b> leaves a single dark or bright spot. This only isolates changes over time in Compare over time; when exploring it also shows colour.</dd>
+        <dt>Stretch</dt>
+        <dd>How brightness maps to grey. <i>asinh</i> and <i>square root</i> lift faint objects without washing out bright ones; <i>linear</i> is proportional.</dd>
+        <dt>Brightness</dt>
+        <dd>Moves the level that is drawn as white. All frames always share one scale, so a visible change is a change in the data.</dd>
+        <dt>Invert, Smooth, Crosshair</dt>
+        <dd>Black-on-white display (often easier for faint objects); smooth or blocky pixels; show or hide the crosshair.</dd>
+      </dl>
+
+      <h3>6. Click an object to measure it</h3>
+      <p>Clicking anything in the image measures it on every exposure that has been loaded. Rings appear on the image: the solid ring is where light is collected, the dashed rings are where the surrounding sky level is taken. The <b>Measure an object</b> panel then shows:</p>
+      <dl>
+        <dt>Spectrum</dt>
+        <dd>The object's brightness at each wavelength from 0.75 to 5 µm, one colour per survey pass. A spectrum shows what an object is made of and how hot it is: dips and bumps mark molecules such as water, methane and carbon dioxide.</dd>
+        <dt>Brightness over time</dt>
+        <dd>Each measurement divided by the object's own typical brightness at that same wavelength, then averaged for each pass and band. This removes the object's colour, leaving how it changed.</dd>
+        <dt>The verdict line</dt>
+        <dd>The largest change between two passes, with its uncertainty. It reads <i>Variable</i> only when the change is at least five times its uncertainty (5σ), and <i>Possibly variable</i> from three times.</dd>
+        <dt>Error bars</dt>
+        <dd>Estimated from how much the surrounding sky scatters. They do not include every instrumental effect.</dd>
+        <dt>Moving and very bright objects</dt>
+        <dd>The measuring ring follows an object that moves between passes. For a star too bright to measure at its centre, Ingress measures the halo of light around it and says so: changes over time remain reliable, the flux values do not.</dd>
+        <dt>Copy link, Download, Clear</dt>
+        <dd>Copy a link that reopens this field with this object selected; save every measurement as a spreadsheet file (CSV); remove the selection.</dd>
+      </dl>
+      <p class="note">What the numbers are: flux in millijanskys is how bright the object appears from here, not its true power output, which would also need its distance. Compared with the 2MASS and WISE catalogues, Ingress fluxes read about 4–13% low because light falling outside the measuring ring is not added back.</p>
+
+      <h3>7. Share what you find</h3>
+      <p>The address bar always describes what is on screen: position, field of view, dates, view, wavelength and any selected object. Copy it to send someone to exactly what you are looking at.</p>
+    </div>
+  </section>
+
+  <section id="dialog-about" class="modal" role="dialog" aria-modal="true" aria-labelledby="about-title" tabindex="-1" hidden>
+    <header><h2 id="about-title">About Ingress</h2><button type="button" class="modal-close" aria-label="Close">×</button></header>
+    <div class="modal-body">
+      <h3>What SPHEREx is</h3>
+      <p>SPHEREx (Spectro-Photometer for the History of the Universe, Epoch of Reionization and Ices Explorer) is a NASA space telescope launched in March 2025. During its planned two-year mission it maps the entire sky about every six months in near-infrared light, from 0.75 to 5.0 µm.</p>
+      <p>Unlike a camera with a handful of filters, SPHEREx splits that range into 102 wavelength channels, giving a coarse spectrum of every point on the sky. It was built to study the first instants of the universe, the history of light from galaxies, and where water and other ices are found around forming stars and planets. Its survey also suits a wider use: the infrared colours it measures pick out hydrogen, water, carbon dioxide and carbon monoxide, and its repeated coverage records how the sky changes.</p>
+
+      <h3>What this site does</h3>
+      <p>Ingress lets anyone enter a position on the sky and see SPHEREx's images of it as a short animation, so that objects which move or change brightness stand out. It can show the field at any wavelength SPHEREx observes, zoom in without reloading, and measure any object you click: its spectrum, and its brightness over time with uncertainties.</p>
+
+      <h3>Why it matters</h3>
+      <p>Things that shift between images taken at different times are nearby: asteroids and comets orbiting the Sun, and close neighbours of the Sun such as faint stars and brown dwarfs, which are too small to shine like stars. Volunteers comparing images by eye have found many of these, because people are good at spotting a dot that jumped.</p>
+      <p>SPHEREx adds two difficulties that earlier surveys did not have. Each exposure is taken at a different wavelength, so simply blinking images makes steady stars appear to vary. And there is more data than any person or team can examine: images of more than a billion objects, updated weekly.</p>
+      <p>Ingress addresses the first directly. Its default view compares the same wavelengths at each epoch, states what was compared, and says when no fair comparison is possible. Its measurements separate an object's colour from its change over time.</p>
+
+      <h3>How it helps people</h3>
+      <ul>
+        <li><b>Volunteers and students</b> can look at real, current NASA data with no software to install and nothing to download.</li>
+        <li><b>Astronomers</b> can check a position in seconds, and link colleagues to exactly what they saw.</li>
+        <li><b>Anyone</b> who finds something can share a link that reproduces it, with the measurements available as a file.</li>
+      </ul>
+
+      <h3>How it works, briefly</h3>
+      <p>For the position you enter, Ingress asks the SPHEREx archive which exposures cover it, reads only the needed part of each image, places them all on one north-up grid, and sends them to your browser, where the frames and measurements are computed. No account is needed and the site sets no cookies.</p>
+
+      <h3>Limits to keep in mind</h3>
+      <ul>
+        <li>SPHEREx's pixels are 6.15″ across, so close pairs of objects blend and small motions are subtle.</li>
+        <li>Most of the sky has been observed in only a few epochs so far.</li>
+        <li>Measurements are quick-look estimates. They are not a substitute for the mission's own calibrated data products, and a possible discovery needs checking against existing catalogues and by other observers.</li>
+      </ul>
+
+      <h3>Sources</h3>
+      <p><b>Image data.</b> SPHEREx Level 2 spectral images, Data Release 1 and Quick Release 3, from the NASA/IPAC Infrared Science Archive (IRSA).</p>
+      <ul class="sources">
+        <li><a href="https://irsa.ipac.caltech.edu/Missions/spherex.html" target="_blank" rel="noopener">SPHEREx at IRSA</a>: mission summary and data access.</li>
+        <li>SPHEREx DR1 Spectral Images, IRSA, <a href="https://doi.org/10.26131/IRSA678" target="_blank" rel="noopener">doi:10.26131/IRSA678</a>; <a href="https://irsa.ipac.caltech.edu/data/SPHEREx/docs/overview_dr1.html" target="_blank" rel="noopener">Data Release 1 overview</a> and <a href="https://irsa.ipac.caltech.edu/data/SPHEREx/docs/overview_qr.html" target="_blank" rel="noopener">Quick Release overview</a>.</li>
+        <li><a href="https://irsa.ipac.caltech.edu/data/SPHEREx/docs/SPHEREx_Expsupp.pdf" target="_blank" rel="noopener">SPHEREx Explanatory Supplement</a> (PDF): image format, flags and calibration.</li>
+        <li><a href="https://caltech-ipac.github.io/spherex-archive-documentation/" target="_blank" rel="noopener">SPHEREx Archive at IRSA User Guide</a>: data products and programmatic access.</li>
+        <li><a href="https://irsa.ipac.caltech.edu/cloud_access/#spherex" target="_blank" rel="noopener">IRSA cloud data access</a>: the public copy of the images that Ingress reads.</li>
+        <li><a href="https://caltech-ipac.github.io/irsa-tutorials/spherex/" target="_blank" rel="noopener">IRSA SPHEREx tutorials</a>: the methods for finding images and computing wavelengths follow these.</li>
+      </ul>
+      <p><b>Mission papers</b>, as listed by IRSA.</p>
+      <ul class="sources">
+        <li>Mission: <a href="https://ui.adsabs.harvard.edu/abs/2026ApJ...999..139B/abstract" target="_blank" rel="noopener">Bock et al. (2026)</a></li>
+        <li>Data pipeline: <a href="https://ui.adsabs.harvard.edu/abs/2026ApJS..285...67A/abstract" target="_blank" rel="noopener">Akeson et al. (2026)</a></li>
+        <li>Instrument and calibration: <a href="https://ui.adsabs.harvard.edu/abs/2026arXiv260329835K/abstract" target="_blank" rel="noopener">Korngut et al. (2026)</a></li>
+      </ul>
+      <p><b>Comparison catalogues</b>, used to check Ingress's measurements.</p>
+      <ul class="sources">
+        <li><a href="https://irsa.ipac.caltech.edu/Missions/2mass.html" target="_blank" rel="noopener">Two Micron All Sky Survey (2MASS)</a> Point Source Catalog, via IRSA.</li>
+        <li><a href="https://irsa.ipac.caltech.edu/Missions/wise.html" target="_blank" rel="noopener">Wide-field Infrared Survey Explorer (WISE)</a> AllWISE Source Catalog, via IRSA.</li>
+      </ul>
+      <p><b>Inspiration and software.</b></p>
+      <ul class="sources">
+        <li><a href="http://byw.tools/wiseview" target="_blank" rel="noopener">WiseView</a>, the image blinker for WISE data used by the Backyard Worlds projects, which this site adapts to SPHEREx.</li>
+        <li><a href="https://www.astropy.org/" target="_blank" rel="noopener">Astropy</a>, <a href="https://numpy.org/" target="_blank" rel="noopener">NumPy</a>, <a href="https://scipy.org/" target="_blank" rel="noopener">SciPy</a> and <a href="https://fastapi.tiangolo.com/" target="_blank" rel="noopener">FastAPI</a>.</li>
+      </ul>
+
+      <h3>Acknowledgements</h3>
+      <p class="quote">This publication makes use of data products from the Spectro-Photometer for the History of the Universe, Epoch of Reionization and Ices Explorer (SPHEREx), which is a joint project of the Jet Propulsion Laboratory and the California Institute of Technology, and is funded by the National Aeronautics and Space Administration.</p>
+      <p class="quote">This publication makes use of data products from the Two Micron All Sky Survey, which is a joint project of the University of Massachusetts and the Infrared Processing and Analysis Center/California Institute of Technology, funded by the National Aeronautics and Space Administration and the National Science Foundation.</p>
+      <p>This site uses services of the NASA/IPAC Infrared Science Archive, operated by the California Institute of Technology for NASA, and data from the Wide-field Infrared Survey Explorer, a NASA mission.</p>
+      <p class="note">Ingress was built for the 2026 NASA Space Apps Challenge. It is an independent project and is not operated or endorsed by NASA, JPL, Caltech or IRSA.</p>
+    </div>
+  </section>
+</div>
+
 <script src="app.js"></script>
 <script src="compare.js"></script>
 <script src="measure.js"></script>
+<script src="dialogs.js"></script>
 <script>Measure.init();</script>
 </body>
 </html>
