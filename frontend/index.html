@@ -8,7 +8,7 @@
   <meta name="theme-color" content="#05060a">
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' fill='%2305060a'/%3E%3Ccircle cx='36' cy='32' r='20' fill='%23f1efe9'/%3E%3Ccircle cx='18' cy='32' r='7' fill='%2305060a'/%3E%3C/svg%3E">
   <link rel="preload" href="fonts/archivo-latin-wdth-normal.woff2" as="font" type="font/woff2" crossorigin>
-  <link rel="stylesheet" href="style.css?v=5c12597e">
+  <link rel="stylesheet" href="style.css?v=3267d56f">
   <script>document.documentElement.classList.add("js");</script>
 </head>
 <body>
@@ -71,6 +71,16 @@
     </form>
 
     <section class="viewer">
+      <div class="views" role="radiogroup" aria-label="What to look at">
+        <button id="view-compare" type="button" role="radio" aria-checked="true" class="on">
+          <span class="mark" aria-hidden="true"></span>
+          <span class="text"><b>Compare over time</b><small>Same wavelengths in every frame</small></span>
+        </button>
+        <button id="view-explore" type="button" role="radio" aria-checked="false">
+          <span class="mark" aria-hidden="true"></span>
+          <span class="text"><b>Explore wavelengths</b><small>Each frame at its own wavelength</small></span>
+        </button>
+      </div>
       <div class="plate">
         <div class="stage">
           <canvas id="view" width="640" height="640" aria-label="SPHEREx image animation"></canvas>
@@ -101,6 +111,8 @@
       </div>
       <canvas id="timeline" width="640" height="46" aria-label="Exposure timeline"></canvas>
 
+      <section id="context" class="context" hidden aria-live="polite"></section>
+
       <div class="controls">
         <fieldset>
           <legend>Field of view</legend>
@@ -122,7 +134,7 @@
 
         <fieldset>
           <legend>Frames</legend>
-          <div class="row tight">
+          <div class="row tight" id="group-row">
             <label class="inline" for="group">One frame per</label>
             <select id="group">
               <option value="exposure">exposure</option>
@@ -248,7 +260,8 @@
   <div class="wordmark" aria-hidden="true">Ingress</div>
 </footer>
 
-<script src="app.js?v=dc279fcc"></script>
+<script src="app.js?v=d8600022"></script>
+<script src="compare.js?v=bdad2edc"></script>
 <script src="measure.js?v=6102a9aa"></script>
 <script>Measure.init();</script>
 <script src="sky.js?v=661975b6"></script>
