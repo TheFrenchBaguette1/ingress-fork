@@ -666,6 +666,12 @@ async function init() {
   $("fov").min = cfg.fov.min; $("fov").max = cfg.fov.max; $("fov").value = cfg.fov.default;
   $("fov-min").textContent = cfg.fov.min; $("fov-max").textContent = cfg.fov.max;
   buildBandChips();
+  if (Array.isArray(cfg.presets) && cfg.presets.length) {
+    // The server's list of test targets replaces the one written in the page.
+    const menu = $("preset");
+    menu.length = 1;
+    for (const p of cfg.presets) menu.add(new Option(`${p.name} (${p.note})`, `${p.ra} ${p.dec}`));
+  }
 
   $("query").addEventListener("submit", (ev) => {
     ev.preventDefault();

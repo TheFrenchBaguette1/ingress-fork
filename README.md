@@ -96,6 +96,21 @@ browser (`frontend/measure.js`):
 The summary line reports the largest change between two passes and calls it
 variable at 5σ or more.
 
+## Test targets
+
+The five targets in the menu (`TARGETS` in `backend/presets.py`) are kept
+ready so they open in seconds:
+
+- Their exposure lists are bundled in `backend/presets.json`, so opening one
+  never waits on the archive's search service, and works when it is down.
+- With `INGRESS_PREWARM=1` (set in the Dockerfile) the server prepares their
+  images at 10′ in the background when it starts. This takes a few minutes;
+  until it finishes they load at normal speed.
+- Every 12 hours the server asks the archive whether they have new exposures.
+
+After a data release, refresh the bundled lists with
+`python -m backend.presets` and commit the result.
+
 ## Updating for new data releases
 
 The image collections searched are set in one place, `COLLECTIONS` in
