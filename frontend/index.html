@@ -8,7 +8,7 @@
   <meta name="theme-color" content="#05060a">
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' fill='%2305060a'/%3E%3Ccircle cx='36' cy='32' r='20' fill='%23f1efe9'/%3E%3Ccircle cx='18' cy='32' r='7' fill='%2305060a'/%3E%3C/svg%3E">
   <link rel="preload" href="fonts/archivo-latin-wdth-normal.woff2" as="font" type="font/woff2" crossorigin>
-  <link rel="stylesheet" href="style.css?v=e0e935d4">
+  <link rel="stylesheet" href="style.css?v=21ca17a0">
   <script>document.documentElement.classList.add("js");</script>
 </head>
 <body>
@@ -22,6 +22,11 @@
   <p>Blink SPHEREx infrared images of any patch of sky to spot things that move or vary.</p>
   <span class="bar-meta">NASA Space Apps 2026</span>
   <span class="bar-meta">SPHEREx challenge</span>
+  <nav class="top-actions" aria-label="Information">
+    <button type="button" data-dialog="dialog-help" aria-haspopup="dialog">Help</button>
+    <button type="button" data-dialog="dialog-about" aria-haspopup="dialog">About</button>
+    <button type="button" data-dialog="dialog-method" aria-haspopup="dialog">Methodology</button>
+  </nav>
 </header>
 
 
@@ -142,6 +147,8 @@
               <option value="pass">survey pass (~6 months apart)</option>
             </select>
           </div>
+          <p id="group-note" class="hint">Comparing over time uses one frame per epoch.
+            <button type="button" id="group-explore" class="link">Switch to Explore wavelengths</button> to step through exposures, days or survey passes.</p>
           <div class="row tight">
             <label class="inline" for="mode">Show</label>
             <select id="mode">
@@ -270,10 +277,294 @@
   <div class="wordmark" aria-hidden="true">Ingress</div>
 </footer>
 
-<script src="app.js?v=d8600022"></script>
-<script src="compare.js?v=bdad2edc"></script>
+<div id="modal-backdrop" class="modal-backdrop" hidden>
+  <section id="dialog-help" class="modal" role="dialog" aria-modal="true" aria-labelledby="help-title" tabindex="-1" hidden>
+    <header><h2 id="help-title">How to use Ingress</h2><button type="button" class="modal-close" aria-label="Close">×</button></header>
+    <div class="modal-body">
+      <p class="lead">Ingress shows how a patch of sky looks in SPHEREx's infrared images, and how it has changed. Load a field, watch it blink, then click anything interesting to measure it.</p>
+
+      <h3>1. Choose a field</h3>
+      <dl>
+        <dt>Coordinates</dt>
+        <dd>Where to look, as right ascension then declination (ICRS). Decimal degrees (<code>133.7951 -7.2451</code>) or hours and degrees (<code>08h55m10.8s -7d14m42s</code>, <code>08:55:10.8 -07:14:42</code>) both work. The line underneath shows how your entry was read.</dd>
+        <dt>Or pick a test target</dt>
+        <dd>Five objects chosen to show different behaviour: a star that moves quickly across the sky, two brown dwarf systems and two variable stars. These are kept ready, so they load fastest.</dd>
+        <dt>Field of view to load</dt>
+        <dd>The width of the square of sky to fetch, from 1 to 20 arcminutes (the full Moon is about 30). Larger fields catch faster-moving objects but take longer to load. Up to about 12 arcminutes the image is drawn with 3.1″ pixels, half the size of SPHEREx's own 6.15″ pixels; larger fields are drawn more coarsely.</dd>
+        <dt>From / To</dt>
+        <dd>Only exposures taken between these dates are used. SPHEREx survey data begins in spring 2025.</dd>
+        <dt>Load images</dt>
+        <dd>Finds every SPHEREx exposure covering that position and downloads the piece you asked for. Frames appear while loading continues. Fields near the ecliptic poles have thousands of exposures; Ingress then loads an evenly spaced sample of 900 and tells you so.</dd>
+      </dl>
+
+      <h3>2. Choose what you are looking at</h3>
+      <p>This is the most important choice on the page. A SPHEREx exposure records each point of sky at <b>one wavelength</b>, and the wavelength differs from exposure to exposure. A star that is brighter at 2 µm than at 4 µm will appear to fade between two such exposures even though nothing happened to it.</p>
+      <dl>
+        <dt>Compare over time</dt>
+        <dd>One frame per epoch (each period when SPHEREx was observing this field, typically six months apart). Every frame is built from the <b>same wavelengths with the same weighting</b>, so a difference between frames is a change over time. Use this to find things that moved or changed brightness.</dd>
+        <dt>Explore wavelengths</dt>
+        <dd>One frame per exposure, day or survey pass, each at its own wavelength, which is printed on the image. Use this to see how the sky looks across the infrared, or to follow fast movers such as asteroids from day to day. Brightness changes here can be colour alone.</dd>
+        <dt>The panel under the image</dt>
+        <dd>States which of the two you are doing. When comparing, its table lists each epoch's dates, how many exposures were used, their mean wavelength, how far the epoch is offset from the others, and how its star images differ in width. It warns when the epochs are poorly matched, and says plainly when no fair comparison exists.</dd>
+      </dl>
+
+      <h3>3. Read the image</h3>
+      <dl>
+        <dt>Orientation and scale</dt>
+        <dd>North is up and east is to the left, as on the sky. The bar at lower right gives the scale in arcminutes (′) or arcseconds (″).</dd>
+        <dt>Crosshair</dt>
+        <dd>Marks the coordinates you entered. A fast-moving object may sit a little away from it, because catalogue positions are for an earlier date.</dd>
+        <dt>Corner label</dt>
+        <dd>The frame's dates and, when exploring, its wavelength.</dd>
+        <dt>Pointing at the image</dt>
+        <dd>Shows the sky position under the pointer and the surface brightness there in megajanskys per steradian, after the smooth sky glow has been removed.</dd>
+        <dt>Dark purple patches</dt>
+        <dd>No usable data: pixels the SPHEREx pipeline flagged as bad, or sky an exposure did not cover.</dd>
+        <dt>Very bright stars</dt>
+        <dd>Their centres overflow the detector. Ingress fills them with a flat white patch so they do not appear as holes; the patch carries no brightness information.</dd>
+      </dl>
+
+      <h3>4. Play the animation</h3>
+      <dl>
+        <dt>Play / Pause, ◀ ▶ and the slider</dt>
+        <dd>Run the animation or step through it one frame at a time. Blinking between frames is how the eye picks out an object that shifted: this is how Pluto was found. The space bar and arrow keys do the same.</dd>
+        <dt>Speed</dt>
+        <dd>Frames per second.</dd>
+        <dt>Timeline strip</dt>
+        <dd>Every tick is one exposure, placed by date. Its row and colour show which of the six detectors took it. Dim ticks are outside the wavelengths you have selected, and the amber box marks the frame on screen.</dd>
+      </dl>
+
+      <h3>5. Adjust the view</h3>
+      <dl>
+        <dt>Field of view</dt>
+        <dd>Zooms to a smaller square around the centre. This is instant because the data is already loaded.</dd>
+        <dt>Wavelength: All and Bands 1 to 6</dt>
+        <dd>SPHEREx has six detectors, each covering part of the range from 0.75 to 5.0 µm. Different bands reveal different things:
+          <ul>
+            <li><b>Bands 1 to 3 (0.75–2.42 µm)</b>: ordinary starlight; most stars are brightest here.</li>
+            <li><b>Band 4 (2.42–3.82 µm)</b>: contains the water-ice absorption near 3.0 µm.</li>
+            <li><b>Band 5 (3.81–4.42 µm)</b>: contains carbon dioxide ice near 4.27 µm.</li>
+            <li><b>Band 6 (4.41–5.0 µm)</b>: contains carbon monoxide near 4.67 µm. The coldest brown dwarfs, almost invisible at shorter wavelengths, are brightest in bands 5 and 6.</li>
+          </ul>
+        </dd>
+        <dt>Custom … to … µm, Apply</dt>
+        <dd>Any range you choose between 0.75 and 5.0 µm.</dd>
+        <dt>One frame per</dt>
+        <dd>When exploring: one frame per exposure (most frames, noisiest), per day, or per survey pass (fewest frames, deepest). It is switched off when comparing over time, which always uses one frame per epoch.</dd>
+        <dt>Show: images / difference</dt>
+        <dd>The difference view subtracts the average of all frames, so anything that stayed the same vanishes. An object that <b>moved</b> leaves a dark spot beside a bright one. An object that <b>changed brightness</b> leaves a single dark or bright spot. This only isolates changes over time in Compare over time; when exploring it also shows colour.</dd>
+        <dt>Stretch</dt>
+        <dd>How brightness maps to grey. <i>asinh</i> and <i>square root</i> lift faint objects without washing out bright ones; <i>linear</i> is proportional.</dd>
+        <dt>Brightness</dt>
+        <dd>Moves the level that is drawn as white. All frames always share one scale, so a visible change is a change in the data.</dd>
+        <dt>Invert, Smooth, Crosshair</dt>
+        <dd>Black-on-white display (often easier for faint objects); smooth or blocky pixels; show or hide the crosshair.</dd>
+      </dl>
+
+      <h3>6. Click an object to measure it</h3>
+      <p>Clicking anything in the image measures it on every exposure that has been loaded. Rings appear on the image: the solid ring is where light is collected, the dashed rings are where the surrounding sky level is taken. The <b>Measure an object</b> panel then shows:</p>
+      <dl>
+        <dt>Spectrum</dt>
+        <dd>The object's brightness at each wavelength from 0.75 to 5 µm, one colour per survey pass. A spectrum shows what an object is made of and how hot it is: dips and bumps mark molecules such as water, methane and carbon dioxide.</dd>
+        <dt>Brightness over time</dt>
+        <dd>Each measurement divided by the object's own typical brightness at that same wavelength, then averaged for each pass and band. This removes the object's colour, leaving how it changed.</dd>
+        <dt>The verdict line</dt>
+        <dd>The largest change between two passes, with its uncertainty. It reads <i>Variable</i> only when the change is at least five times its uncertainty (5σ), and <i>Possibly variable</i> from three times.</dd>
+        <dt>Error bars</dt>
+        <dd>Estimated from how much the surrounding sky scatters. They do not include every instrumental effect.</dd>
+        <dt>Moving and very bright objects</dt>
+        <dd>The measuring ring follows an object that moves between passes. For a star too bright to measure at its centre, Ingress measures the halo of light around it and says so: changes over time remain reliable, the flux values do not.</dd>
+        <dt>AI reading</dt>
+        <dd>Once every exposure has loaded, an AI model is sent these measurements and writes what each one means and whether it is significant. It explains the numbers; it does not produce them, and it can be wrong. <b>Analyze again</b> asks for a fresh reading. It appears only when the site has been set up with an OpenAI key.</dd>
+        <dt>Copy link, Download, Clear</dt>
+        <dd>Copy a link that reopens this field with this object selected; save every measurement as a spreadsheet file (CSV); remove the selection.</dd>
+      </dl>
+      <p class="note">What the numbers are: flux in millijanskys is how bright the object appears from here, not its true power output, which would also need its distance. Compared with the 2MASS and WISE catalogues, Ingress fluxes read about 4–13% low because light falling outside the measuring ring is not added back.</p>
+
+      <h3>7. Share what you find</h3>
+      <p>The address bar always describes what is on screen: position, field of view, dates, view, wavelength and any selected object. Copy it to send someone to exactly what you are looking at.</p>
+    </div>
+  </section>
+
+  <section id="dialog-about" class="modal" role="dialog" aria-modal="true" aria-labelledby="about-title" tabindex="-1" hidden>
+    <header><h2 id="about-title">About Ingress</h2><button type="button" class="modal-close" aria-label="Close">×</button></header>
+    <div class="modal-body">
+      <h3>What SPHEREx is</h3>
+      <p>SPHEREx (Spectro-Photometer for the History of the Universe, Epoch of Reionization and Ices Explorer) is a NASA space telescope launched in March 2025. During its planned two-year mission it maps the entire sky about every six months in near-infrared light, from 0.75 to 5.0 µm.</p>
+      <p>Unlike a camera with a handful of filters, SPHEREx splits that range into 102 wavelength channels, giving a coarse spectrum of every point on the sky. It was built to study the first instants of the universe, the history of light from galaxies, and where water and other ices are found around forming stars and planets. Its survey also suits a wider use: the infrared colours it measures pick out hydrogen, water, carbon dioxide and carbon monoxide, and its repeated coverage records how the sky changes.</p>
+
+      <h3>What this site does</h3>
+      <p>Ingress lets anyone enter a position on the sky and see SPHEREx's images of it as a short animation, so that objects which move or change brightness stand out. It can show the field at any wavelength SPHEREx observes, zoom in without reloading, and measure any object you click: its spectrum, and its brightness over time with uncertainties.</p>
+
+      <h3>Why it matters</h3>
+      <p>Things that shift between images taken at different times are nearby: asteroids and comets orbiting the Sun, and close neighbours of the Sun such as faint stars and brown dwarfs, which are too small to shine like stars. Volunteers comparing images by eye have found many of these, because people are good at spotting a dot that jumped.</p>
+      <p>SPHEREx adds two difficulties that earlier surveys did not have. Each exposure is taken at a different wavelength, so simply blinking images makes steady stars appear to vary. And there is more data than any person or team can examine: images of more than a billion objects, updated weekly.</p>
+      <p>Ingress addresses the first directly. Its default view compares the same wavelengths at each epoch, states what was compared, and says when no fair comparison is possible. Its measurements separate an object's colour from its change over time.</p>
+
+      <h3>How it helps people</h3>
+      <ul>
+        <li><b>Volunteers and students</b> can look at real, current NASA data with no software to install and nothing to download.</li>
+        <li><b>Astronomers</b> can check a position in seconds, and link colleagues to exactly what they saw.</li>
+        <li><b>Anyone</b> who finds something can share a link that reproduces it, with the measurements available as a file.</li>
+      </ul>
+
+      <h3>How it works, briefly</h3>
+      <p>For the position you enter, Ingress asks the SPHEREx archive which exposures cover it, reads only the needed part of each image, places them all on one north-up grid, and sends them to your browser, where the frames and measurements are computed. No account is needed and the site sets no cookies.</p>
+
+      <p>The exact procedures, thresholds and checks are set out under <button type="button" class="link" data-dialog="dialog-method">Methodology</button>.</p>
+
+      <h3>Limits to keep in mind</h3>
+      <ul>
+        <li>SPHEREx's pixels are 6.15″ across, so close pairs of objects blend and small motions are subtle.</li>
+        <li>Most of the sky has been observed in only a few epochs so far.</li>
+        <li>Measurements are quick-look estimates. They are not a substitute for the mission's own calibrated data products, and a possible discovery needs checking against existing catalogues and by other observers.</li>
+      </ul>
+
+      <h3>Sources</h3>
+      <p><b>Image data.</b> SPHEREx Level 2 spectral images, Data Release 1 and Quick Release 3, from the NASA/IPAC Infrared Science Archive (IRSA).</p>
+      <ul class="sources">
+        <li><a href="https://irsa.ipac.caltech.edu/Missions/spherex.html" target="_blank" rel="noopener">SPHEREx at IRSA</a>: mission summary and data access.</li>
+        <li>SPHEREx DR1 Spectral Images, IRSA, <a href="https://doi.org/10.26131/IRSA678" target="_blank" rel="noopener">doi:10.26131/IRSA678</a>; <a href="https://irsa.ipac.caltech.edu/data/SPHEREx/docs/overview_dr1.html" target="_blank" rel="noopener">Data Release 1 overview</a> and <a href="https://irsa.ipac.caltech.edu/data/SPHEREx/docs/overview_qr.html" target="_blank" rel="noopener">Quick Release overview</a>.</li>
+        <li><a href="https://irsa.ipac.caltech.edu/data/SPHEREx/docs/SPHEREx_Expsupp.pdf" target="_blank" rel="noopener">SPHEREx Explanatory Supplement</a> (PDF): image format, flags and calibration.</li>
+        <li><a href="https://caltech-ipac.github.io/spherex-archive-documentation/" target="_blank" rel="noopener">SPHEREx Archive at IRSA User Guide</a>: data products and programmatic access.</li>
+        <li><a href="https://irsa.ipac.caltech.edu/cloud_access/#spherex" target="_blank" rel="noopener">IRSA cloud data access</a>: the public copy of the images that Ingress reads.</li>
+        <li><a href="https://caltech-ipac.github.io/irsa-tutorials/spherex/" target="_blank" rel="noopener">IRSA SPHEREx tutorials</a>: the methods for finding images and computing wavelengths follow these.</li>
+      </ul>
+      <p><b>Mission papers</b>, as listed by IRSA.</p>
+      <ul class="sources">
+        <li>Mission: <a href="https://ui.adsabs.harvard.edu/abs/2026ApJ...999..139B/abstract" target="_blank" rel="noopener">Bock et al. (2026)</a></li>
+        <li>Data pipeline: <a href="https://ui.adsabs.harvard.edu/abs/2026ApJS..285...67A/abstract" target="_blank" rel="noopener">Akeson et al. (2026)</a></li>
+        <li>Instrument and calibration: <a href="https://ui.adsabs.harvard.edu/abs/2026arXiv260329835K/abstract" target="_blank" rel="noopener">Korngut et al. (2026)</a></li>
+      </ul>
+      <p><b>Comparison catalogues</b>, used to check Ingress's measurements.</p>
+      <ul class="sources">
+        <li><a href="https://irsa.ipac.caltech.edu/Missions/2mass.html" target="_blank" rel="noopener">Two Micron All Sky Survey (2MASS)</a> Point Source Catalog, via IRSA.</li>
+        <li><a href="https://irsa.ipac.caltech.edu/Missions/wise.html" target="_blank" rel="noopener">Wide-field Infrared Survey Explorer (WISE)</a> AllWISE Source Catalog, via IRSA.</li>
+      </ul>
+      <p><b>Inspiration and software.</b></p>
+      <ul class="sources">
+        <li><a href="http://byw.tools/wiseview" target="_blank" rel="noopener">WiseView</a>, the image blinker for WISE data used by the Backyard Worlds projects, which this site adapts to SPHEREx.</li>
+        <li><a href="https://www.astropy.org/" target="_blank" rel="noopener">Astropy</a>, <a href="https://numpy.org/" target="_blank" rel="noopener">NumPy</a>, <a href="https://scipy.org/" target="_blank" rel="noopener">SciPy</a> and <a href="https://fastapi.tiangolo.com/" target="_blank" rel="noopener">FastAPI</a>.</li>
+      </ul>
+
+      <h3>Acknowledgements</h3>
+      <p class="quote">This publication makes use of data products from the Spectro-Photometer for the History of the Universe, Epoch of Reionization and Ices Explorer (SPHEREx), which is a joint project of the Jet Propulsion Laboratory and the California Institute of Technology, and is funded by the National Aeronautics and Space Administration.</p>
+      <p class="quote">This publication makes use of data products from the Two Micron All Sky Survey, which is a joint project of the University of Massachusetts and the Infrared Processing and Analysis Center/California Institute of Technology, funded by the National Aeronautics and Space Administration and the National Science Foundation.</p>
+      <p>This site uses services of the NASA/IPAC Infrared Science Archive, operated by the California Institute of Technology for NASA, and data from the Wide-field Infrared Survey Explorer, a NASA mission.</p>
+      <p class="note">Ingress was built for the 2026 NASA Space Apps Challenge. It is an independent project and is not operated or endorsed by NASA, JPL, Caltech or IRSA.</p>
+    </div>
+  </section>
+
+  <section id="dialog-method" class="modal" role="dialog" aria-modal="true" aria-labelledby="method-title" tabindex="-1" hidden>
+    <header><h2 id="method-title">Methodology</h2><button type="button" class="modal-close" aria-label="Close">×</button></header>
+    <div class="modal-body method">
+      <p class="lead">Every image and number on this site is derived from SPHEREx spectral images by the steps below. Thresholds are stated so that results can be reproduced and their limits judged.</p>
+
+      <h3>1. Data</h3>
+      <ul>
+        <li><b>Product.</b> SPHEREx Level 2 spectral images (calibrated single exposures, 2040 × 2040 pixels of 6.15″, surface brightness in MJy sr⁻¹) from IRSA: the Data Release 1 and Quick Release 3 collections, wide and deep surveys. Where an exposure is in more than one collection, DR1 is used.</li>
+        <li><b>Spectral sampling.</b> Each detector sits behind a linear variable filter, so the wavelength recorded depends on position on the detector. One exposure therefore gives each sky position a single wavelength; a spectrum is assembled from many exposures. The six detectors cover 0.75–1.11, 1.10–1.63, 1.63–2.42, 2.42–3.82, 3.81–4.42 and 4.41–5.00 µm at resolving powers of about 39, 41, 41, 35, 112 and 128.</li>
+        <li><b>Selection.</b> IRSA's Simple Image Access service returns the exposures whose footprint contains the requested position within the requested dates. If there are more than 900, an evenly spaced subset in time order is used and the page says so.</li>
+        <li><b>Reading.</b> For each exposure only the detector rows covering the field are read from the IMAGE and FLAGS extensions. For a test exposure this was checked to give pixel-identical results to IRSA's own cutout service.</li>
+      </ul>
+
+      <h3>2. From exposure to image</h3>
+      <ul>
+        <li><b>Flags.</b> Pixels with any of these pipeline flags are discarded: TRANSIENT, SUR_ERROR, NONFUNC, MISSING_DATA, HOT, COLD, PERSIST, SNOWBALL. Flags that mark real sky signal or milder conditions (SOURCE, the ghost flags, HALO, DICHROIC, NONLINEAR, OUTLIER) are kept.</li>
+        <li><b>Saturation.</b> Pixels flagged OVERFLOW, and discarded pixels within six detector pixels of them, are set to the brightest unsaturated value in the region read. This is for display only; it is detected later and never measured as flux.</li>
+        <li><b>Projection.</b> Each exposure is resampled onto one gnomonic (TAN) grid centred on the requested position, north up, with pixels of max(3.075″, field of view ⁄ 240). The mapping uses the astrometric solution in each file's header, including its SIP distortion terms. Ingress does not refine the astrometry.</li>
+        <li><b>Interpolation.</b> Bilinear, weighted by the mask: with <i>g</i> = 1 for good pixels, the output is interp(<i>g·I</i>) ⁄ interp(<i>g</i>), kept where interp(<i>g</i>) &gt; 0.6. Surface brightness is preserved; noise becomes correlated between neighbouring output pixels, which is allowed for in section 6.</li>
+        <li><b>Background.</b> The median of the field is subtracted from each exposure, and its noise is estimated as 1.4826 × the median absolute deviation. This removes zodiacal light, which is smooth on these scales, without relying on a model. It also removes any real emission that is uniform across the field, and biases the level where bright extended emission fills much of the field.</li>
+        <li><b>Wavelength.</b> The wavelength and bandwidth at the field centre are read from each file's wavelength lookup table by bilinear interpolation at the detector position, which reproduces Astropy's evaluation of the same table. The wavelength elsewhere in the field is taken as linear, from the gradient measured between the field edges.</li>
+        <li><b>Time.</b> Dates are the mid-exposure UTC times from the headers. No barycentric correction is applied; it is at most minutes and immaterial for the timescales compared here.</li>
+      </ul>
+
+      <h3>3. Epochs</h3>
+      <p>SPHEREx returns to most positions about every six months and observes them for days to weeks. Exposures separated by more than 30 days belong to different epochs. Near the ecliptic poles coverage is continuous; an unbroken run longer than 90 days is cut into equal parts of at most about 45 days.</p>
+
+      <h3>4. Comparing the same spectral region over time</h3>
+      <p><b>The problem.</b> For a source with flux density <i>F</i>(λ), two exposures at λ₁ and λ₂ differ by <i>F</i>(λ₁) − <i>F</i>(λ₂) even if the source is constant. Averaging all exposures of a detector band per epoch does not remove this, because each epoch samples the band at different wavelengths with different weights.</p>
+      <p><b>The construction.</b></p>
+      <ol>
+        <li>Each detector band is divided into six equal wavelength intervals (slices), 36 in total.</li>
+        <li>An exposure is used if it covers at least half the field and its noise is no more than three times the median for its detector. The second condition excludes the very noisy exposures found at the ends of a detector's range, which would otherwise dominate an equally weighted average.</li>
+        <li>Only slices observed in every epoch are kept. If that leaves fewer than a quarter of the median number of slices per epoch, the epoch with the fewest slices is dropped and the test repeated. Dropped epochs are listed with the reason.</li>
+        <li>For epoch <i>e</i> and pixel <i>p</i>, each kept slice <i>s</i> is averaged over its exposures, then the slices are averaged with equal weight:
+          <p class="eq"><i>I<sub>e</sub></i>(<i>p</i>) = (1 ⁄ <i>S</i>) Σ<sub><i>s</i></sub> ⟨<i>I</i>(<i>p</i>)⟩<sub><i>e,s</i></sub></p>
+          Every epoch therefore has the same effective spectral response at the resolution of a slice.</li>
+        <li>Outliers: with at least five values at a pixel, a value further than 6σ from their median (σ = 1.4826 × MAD) is discarded, except that a slice is never emptied unless the value is also beyond 8(|median| + σ). The exception protects the centres of stars, whose pixel values legitimately vary as the star falls on different parts of a 6.15″ pixel.</li>
+        <li>A pixel is shown for an epoch only if at least 85% of the slices contributed.</li>
+      </ol>
+      <p><b>If it cannot be done.</b> With fewer than two epochs sharing any slice, no comparison is shown: the page states this and displays one labelled epoch.</p>
+      <p><b>Difference images</b> are <i>I<sub>e</sub></i> minus the mean over epochs, evaluated only where every epoch has data. In the Explore view the same subtraction is applied to frames of different wavelength and is labelled as not isolating variability.</p>
+      <p><b>Diagnostics reported with each comparison.</b></p>
+      <ul>
+        <li><b>Mean wavelength</b> per epoch, as the mean over slices of the mean wavelength within each slice.</li>
+        <li><b>Offset.</b> Up to 40 of the brightest unsaturated stars (local maxima more than 12σ above the median) are centroided in each epoch by intensity-weighted first moments in a 9 × 9 pixel window. An epoch's offset is the median displacement of its stars from their mean positions. A warning is given above 1.5″, a quarter of a detector pixel.</li>
+        <li><b>Star width.</b> The second moment of the same stars, relative to the mean over epochs. A warning is given when epochs differ by more than 10%.</li>
+        <li><b>Shared field.</b> The fraction of pixels with data in every epoch; a warning is given below 80%.</li>
+      </ul>
+      <p>Offsets and widths are measured, not corrected. At least eight stars are required; otherwise the page says they could not be measured.</p>
+      <p><b>What remains unmatched.</b> Within a slice (about a sixth of a band) the epochs' wavelengths still differ, by the amount shown in the table, so a source with strong spectral structure can show a small spurious change. The point-spread function varies with wavelength and detector position and the spacecraft orientation differs between epochs, so bright stars leave residuals in difference images. Objects that move appreciably within an epoch are smeared.</p>
+
+      <h3>5. Frames in the Explore view and display scaling</h3>
+      <ul>
+        <li><b>Frames.</b> A frame is one exposure, or the average of the exposures in one UTC day or one epoch, with values beyond 6σ of the per-pixel median discarded when there are at least five. No wavelength matching is applied; the frame label gives the wavelength or range.</li>
+        <li><b>Scaling.</b> One display range is used for all frames of an animation, so apparent changes are not produced by rescaling. Black is the median minus 2σ of the pixels in view; white is a chosen percentile, 99.5 by default. Difference images use a symmetric linear range.</li>
+        <li><b>Stretch.</b> With <i>t</i> the value scaled to 0–1: linear <i>t</i>; square root √<i>t</i>; asinh(10<i>t</i>) ⁄ asinh(10).</li>
+      </ul>
+
+      <h3>6. Photometry of a selected object</h3>
+      <p><b>Aperture flux.</b> For each exposure, pixels whose centres lie within 9.5″ of the object are summed and the sky level, the median in an annulus from 22″ to 34″, is subtracted:</p>
+      <p class="eq"><i>F</i> = (Σ<sub>ap</sub> <i>I</i> − <i>N</i> · median<sub>sky</sub>) · Ω,  Ω = (pixel scale ⁄ 206 265″)² sr</p>
+      <p>with <i>F</i> in mJy (1 MJy = 10⁹ mJy). The measurement is discarded if fewer than 85% of the aperture pixels or half of the annulus pixels have data. No aperture correction is applied.</p>
+      <p><b>Uncertainty.</b></p>
+      <p class="eq">σ<sub><i>F</i></sub> = σ<sub>sky</sub> · √(<i>N</i> (1 + <i>N</i> ⁄ <i>N</i><sub>sky</sub>)) · <i>c</i> · Ω,  <i>c</i> = max(1, 6.15″ ⁄ pixel scale)</p>
+      <p>σ<sub>sky</sub> is 1.4826 × MAD in the annulus, the second term under the root is the uncertainty of the sky level, and <i>c</i> accounts for noise shared between resampled pixels. This is a background-limited estimate. It omits photon noise from the source itself, flat-field and calibration errors, and the variation of the measured flux with a star's position within a pixel, so it understates the error for bright sources.</p>
+      <p><b>Wavelength</b> is evaluated at the object's position from the field-centre value and gradient.</p>
+      <p><b>Moving objects.</b> In each epoch's stacked image the aperture is re-centred on the intensity-weighted centroid near the selected point (at most four iterations), provided the peak exceeds 4σ and the centre stays within 18″ of the selected point.</p>
+      <p><b>Saturated stars.</b> A measurement is marked saturated if four or more aperture pixels carry the filled value. If more than 30% of an object's measurements are saturated, all are replaced by a halo measurement: with <i>r</i><sub>sat</sub> the 90th percentile over exposures of the saturated core's equivalent radius, the flux is the median surface brightness in the ring <i>r</i><sub>sat</sub> + 9″ to <i>r</i><sub>sat</sub> + 24″, times the ring's area, above the sky in <i>r</i><sub>sat</sub> + 45″ to + 60″. The median rejects neighbouring stars and diffraction spikes; its uncertainty carries the factor 1.2533 for a median. Halo flux is proportional to the star's flux as long as the outer point-spread function is stable, so ratios over time are meaningful. It is not a total flux, and its dependence on wavelength is not calibrated.</p>
+      <p><b>Brightness over time.</b> To remove the spectrum, each measurement is divided by the median of all unsaturated measurements, from any epoch, within 0.6 of a bandwidth of its wavelength:</p>
+      <p class="eq"><i>r<sub>i</sub></i> = <i>F<sub>i</sub></i> ⁄ median{ <i>F<sub>j</sub></i> : |λ<sub><i>j</i></sub> − λ<sub><i>i</i></sub>| ≤ 0.6 Δλ<sub><i>i</i></sub> }</p>
+      <p>This requires measurements from at least two epochs in that window and a reference above five times their median uncertainty. Values of <i>r</i> are combined per epoch, and per epoch and band, by inverse-variance weighted mean. The uncertainty of each mean is the larger of its formal error and the standard error from the scatter of its members (three or more), with 1% added in quadrature for calibration stability.</p>
+      <p><b>Variability statement.</b> Among epochs with at least five usable measurements, the pair with the largest |<i>r<sub>a</sub></i> − <i>r<sub>b</sub></i>| ⁄ √(σ<sub><i>a</i></sub>² + σ<sub><i>b</i></sub>²) is reported: "variable" at 5 or more, "possibly variable" from 3. Because the largest of several pairs is chosen and the uncertainties are incomplete, the 5σ threshold is deliberately conservative and the 3σ level should be read as a prompt to look closer, not as a detection.</p>
+
+      <h3>7. Validation</h3>
+      <p>Both checks run the page's own code in an automated browser (script and inputs are in the project's <code>validation</code> folder).</p>
+      <p><b>Flux scale.</b> Eight isolated stars (J = 13.7–15.0) in the WISE 0855−0714 field were compared with the 2MASS Point Source Catalog and the AllWISE Source Catalog. The Ingress value for a filter is the mean of its measurements in a top-hat window (J 1.17–1.33, H 1.51–1.79, K<sub>s</sub> 2.03–2.30, W1 3.0–3.8, W2 4.1–5.0 µm). Catalogue magnitudes were converted with zero-magnitude fluxes of 1594, 1024 and 666.7 Jy (<a href="https://ui.adsabs.harvard.edu/abs/2003AJ....126.1090C/abstract" target="_blank" rel="noopener">Cohen et al. 2003</a>) and 309.54 and 171.787 Jy (<a href="https://ui.adsabs.harvard.edu/abs/2011ApJ...735..112J/abstract" target="_blank" rel="noopener">Jarrett et al. 2011</a>).</p>
+      <table>
+        <thead><tr><th>Filter</th><th>Median Ingress ⁄ catalogue</th><th>Star-to-star scatter</th></tr></thead>
+        <tbody>
+          <tr><td>J</td><td>0.92</td><td>0.06</td></tr>
+          <tr><td>H</td><td>0.93</td><td>0.04</td></tr>
+          <tr><td>K<sub>s</sub></td><td>0.88</td><td>0.05</td></tr>
+          <tr><td>W1</td><td>0.87</td><td>0.09</td></tr>
+          <tr><td>W2</td><td>0.96</td><td>0.13</td></tr>
+        </tbody>
+      </table>
+      <p>Fluxes are 4–13% low, the sign and size expected without an aperture correction. The sample is small, the filter model is a top hat, and the catalogue epochs differ from SPHEREx's.</p>
+      <p><b>Time series.</b> R Draconis, a Mira variable that saturates SPHEREx, was measured by the halo method. Nightly means of <i>r</i> on 167 nights spanning 518 days were fitted with a sinusoid at trial periods from 120 to 500 days. The best period is <b>245 days</b> (242–249 at Δχ² = 1 after scaling to unit reduced χ²), against a catalogued 245.6 days (<a href="http://www.sai.msu.su/gcvs/gcvs/" target="_blank" rel="noopener">General Catalogue of Variable Stars</a>). The data cover about two cycles, and a single sinusoid accounts for half of the variance, as expected for a light curve that is not sinusoidal and whose amplitude depends on wavelength.</p>
+
+      <h3>8. Summary of limitations</h3>
+      <ul>
+        <li>Angular resolution is set by 6.15″ pixels: blended sources are measured together, and motions much smaller than a pixel between epochs are hard to detect. Ingress has not measured its own detection limit for motion.</li>
+        <li>Wavelength matching is at the level of a slice, not exact; no colour correction is made.</li>
+        <li>No astrometric refinement, point-spread-function matching or aperture correction is applied; the first two are measured and reported.</li>
+        <li>Uncertainties are background-limited estimates and are incomplete for bright sources.</li>
+        <li>Per-exposure median subtraction removes spatially uniform signal.</li>
+        <li>In fields with more than 900 exposures a subset is used, which thins wavelength coverage per epoch.</li>
+        <li>Results are quick-look measurements intended to identify candidates. A candidate should be confirmed with the mission's catalogues and independent data before any claim is made.</li>
+      </ul>
+      <p class="note">Data sources, mission papers and acknowledgements are listed under About.</p>
+    </div>
+  </section>
+</div>
+
+<script src="app.js?v=d2c3d172"></script>
+<script src="compare.js?v=dc7e86f9"></script>
 <script src="measure.js?v=b2d79902"></script>
 <script src="insight.js?v=9b63e2f7"></script>
+<script src="dialogs.js?v=65f7dbc8"></script>
 <script>Measure.init(); Insight.init();</script>
 <script src="sky.js?v=661975b6"></script>
 <script src="story.js?v=4a8649d9"></script>

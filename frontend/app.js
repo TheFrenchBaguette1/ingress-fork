@@ -740,6 +740,7 @@ async function init() {
   $("speed").oninput = () => { $("speed-val").textContent = `${$("speed").value} fps`; };
   $("group").onchange = () => { state.group = $("group").value; rebuild(); syncUrl(); precompute(); };
   $("mode").onchange = () => { state.mode = $("mode").value; state.limits = null; draw(); Compare.render(); };
+  $("group-explore").onclick = () => setView("explore");
   $("view-compare").onclick = () => setView("compare");
   $("view-explore").onclick = () => setView("explore");
   for (const id of ["view-compare", "view-explore"]) {
