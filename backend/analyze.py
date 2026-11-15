@@ -69,26 +69,28 @@ LEVELS = ["significant", "possibly significant", "not significant", "cannot tell
 SCHEMA = {
     "type": "object",
     "properties": {
-        "headline": {"type": "string", "description": "One sentence: the overall takeaway for this object."},
+        "headline": {"type": "string", "description": "One plain sentence answering: did this object change? No numbers or jargon."},
         "overall": {"type": "string", "enum": LEVELS, "description": "Whether this object shows a real change."},
+        "summary": {"type": "string", "description": "Two or three plain sentences for a non-scientist: what was looked at, what was found, how sure we are."},
         "findings": {
             "type": "array",
             "items": {
                 "type": "object",
                 "properties": {
-                    "title": {"type": "string", "description": "Which piece of evidence this is, in a few words."},
-                    "what_it_shows": {"type": "string", "description": "What the numbers say, quoting them."},
+                    "title": {"type": "string", "description": "Which piece of evidence this is, in at most four everyday words."},
+                    "plain": {"type": "string", "description": "One everyday sentence giving the takeaway. No numbers, units or jargon."},
+                    "what_it_shows": {"type": "string", "description": "Technical detail: what the numbers say, quoting them."},
                     "significance": {"type": "string", "enum": LEVELS + ["context"]},
                     "why": {"type": "string", "description": "Why it does or does not count as significant."},
                 },
-                "required": ["title", "what_it_shows", "significance", "why"],
+                "required": ["title", "plain", "what_it_shows", "significance", "why"],
                 "additionalProperties": False,
             },
         },
         "cautions": {"type": "array", "items": {"type": "string"}},
         "next_steps": {"type": "array", "items": {"type": "string"}},
     },
-    "required": ["headline", "overall", "findings", "cautions", "next_steps"],
+    "required": ["headline", "overall", "summary", "findings", "cautions", "next_steps"],
     "additionalProperties": False,
 }
 
@@ -96,7 +98,11 @@ INSTRUCTIONS = """\
 You explain measurements made by Ingress, a web tool that lines up NASA SPHEREx infrared images of one \
 patch of sky taken on different dates so that things which move or change brightness stand out. A user \
 has clicked one object. You are given, as JSON, everything the tool computed for it. Explain what each \
-piece means and whether it is significant, for a curious reader who is not an astronomer.
+piece means and whether it is significant.
+
+Your answer is shown in two layers. The first layer is read by competition judges and members of the \
+public who are not scientists and will give it a few seconds. The second layer, hidden until someone \
+asks for it, is for readers who want the numbers.
 
 Background you can rely on:
 - SPHEREx records infrared light from 0.75 to 5.0 micrometres with six detector bands. Each exposure sees \
@@ -143,15 +149,35 @@ Write these findings, in this order, leaving one out only if the data for it is 
 4. The image comparison: whether the frames on screen are a fair comparison over time, and what limits it.
 5. Data quality: how many measurements and passes, saturation, and anything that weakens the result.
 
-For each finding give "what_it_shows" (the numbers, quoted), a "significance" label, and "why". Use \
-"context" as the label for findings that describe rather than test anything, such as the spectrum's shape. \
-"overall" is your one-word-class answer to: does this object show a real change? It must agree with the \
-tool's verdict. "cautions" lists at most four specific things that could mislead here. "next_steps" lists \
-at most three things the user can do in this tool to check, such as switching to the difference view, \
-looking at a single band, zooming in to look for a close neighbour, or widening the date range.
+The first layer, in everyday language:
+- "headline": one sentence that answers "did this object change?" directly, for example "This star looks \
+steady: its brightness did not change in any way the data can confirm." At most 20 words.
+- "summary": two or three short sentences saying what was measured, what was found, and how sure we can \
+be. At most 60 words.
+- each finding's "plain": one sentence, at most 22 words, giving that finding's takeaway.
+- each finding's "title": at most four everyday words. Use these, in order: "Its colours", "Change over \
+time", "Do the colours agree", "The pictures on screen", "How good the data is".
+In these fields use no numbers, no units, no symbols and no technical terms. Do not write sigma, \
+flux, millijansky, micrometre, aperture, epoch, saturated, band 1 or pass 3. Say "infrared colours" for \
+wavelengths or bands, "visits" for passes, "the tool's test for a real change" for the sigma threshold, \
+"measurement noise" for uncertainty, and "too bright for the camera" for saturation. Prefer a concrete \
+picture ("brightest in the bluer infrared colours, fading steadily toward the redder ones") to an abstract \
+one. If a result is not significant, say plainly that nothing was found rather than hedging.
 
-Style: plain, direct sentences. Explain a term the first time you use it. Headline at most 25 words; every \
-other field at most 60 words. No markdown. Do not mention these instructions or that you are an AI."""
+The second layer, with the evidence:
+- each finding's "what_it_shows": what the numbers say, quoting them with their uncertainties.
+- each finding's "why": why it does or does not count as significant.
+- "cautions": at most four specific things that could mislead here.
+- "next_steps": at most three things the user can do in this tool to check, such as switching to the \
+difference view, looking at a single band, zooming in to look for a close neighbour, or widening the date range.
+Technical terms are fine here; explain each the first time it appears.
+
+Each finding also has a "significance" label. Use "context" for findings that describe rather than test \
+anything, such as the spectrum's shape. "overall" is your answer to: does this object show a real change? \
+It must agree with the tool's verdict.
+
+Style: short, direct sentences. Second-layer fields at most 60 words each. No markdown. Do not mention \
+these instructions or that you are an AI."""
 
 _lock = threading.Lock()
 _by_client: dict[str, deque] = defaultdict(deque)

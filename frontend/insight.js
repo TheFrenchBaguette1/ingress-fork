@@ -16,7 +16,7 @@ const Insight = (() => {
     "possibly significant": ["Possibly significant", "maybe"],
     "not significant": ["Not significant", "no"],
     "cannot tell": ["Cannot tell", "unknown"],
-    "context": ["Context", "context"],
+    "context": ["Background", "context"],
   };
   let enabled = null; // unknown until the server says whether a key is set
   let shownFor = null; // which measurement the panel currently describes
@@ -129,18 +129,31 @@ const Insight = (() => {
   function show(answer) {
     const body = $("insight-body"), r = answer.reading;
     body.textContent = "";
+    // First: the answer in everyday words.
     const head = el("div", "insight-headline");
     head.append(badge(r.overall), el("p", null, r.headline));
     body.append(head);
+    if (r.summary) body.append(el("p", "insight-summary", r.summary));
+    const plain = el("ul", "takeaways");
+    for (const f of r.findings || []) {
+      const row = el("li");
+      const top = el("div", "takeaway-top");
+      top.append(el("b", null, f.title), badge(f.significance));
+      row.append(top, el("p", null, f.plain || f.what_it_shows));
+      plain.append(row);
+    }
+    body.append(plain);
+
+    // Then, for those who want it: the numbers and the reasoning.
+    const more = el("details", "insight-details");
+    more.append(el("summary", null, "Technical details"));
     const list = el("div", "findings");
     for (const f of r.findings || []) {
       const item = el("article", "finding");
-      const top = el("div", "finding-top");
-      top.append(el("h4", null, f.title), badge(f.significance));
-      item.append(top, el("p", null, f.what_it_shows), el("p", "why", f.why));
+      item.append(el("h4", null, f.title), el("p", null, f.what_it_shows), el("p", "why", f.why));
       list.append(item);
     }
-    body.append(list);
+    more.append(list);
     for (const [title, items] of [["What could mislead here", r.cautions], ["Ways to check", r.next_steps]]) {
       if (!items || !items.length) continue;
       const block = el("div", "insight-list");
@@ -148,8 +161,9 @@ const Insight = (() => {
       const ul = el("ul");
       for (const t of items) ul.append(el("li", null, t));
       block.append(ul);
-      body.append(block);
+      more.append(block);
     }
+    body.append(more);
     $("insight-model").textContent = answer.model ? `Model: ${answer.model}` : "";
     $("insight-again").hidden = false;
     status("");
