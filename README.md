@@ -82,7 +82,8 @@ The image collections searched are set in one place, `COLLECTIONS` in
 collections appear automatically.
 
 Other settings: `INGRESS_CACHE` (cache directory), `INGRESS_PARALLEL`
-(simultaneous bucket reads, default 24), `SPHEREX_BUCKET_URL`.
+(simultaneous bucket reads, default 24), `INGRESS_SEARCH_TTL` (seconds a
+search result is reused, default 6 hours), `SPHEREX_BUCKET_URL`.
 
 ## Layout
 

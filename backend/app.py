@@ -16,7 +16,6 @@ from pathlib import Path
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.responses import FileResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
-from starlette.concurrency import run_in_threadpool
 
 from . import spherex as sx
 
@@ -67,7 +66,7 @@ def config():
 
 
 @app.get("/api/stream")
-async def stream(
+def stream(
     ra: float = Query(..., ge=0, le=360, description="Right ascension, degrees (ICRS)"),
     dec: float = Query(..., ge=-90, le=90, description="Declination, degrees (ICRS)"),
     fov: float = Query(10, ge=sx.FOV_MIN_ARCMIN, le=sx.FOV_MAX_ARCMIN, description="Field of view, arcmin"),
@@ -81,11 +80,6 @@ async def stream(
     payload (a float16 image, n x n). The first record describes the field.
     """
     grid, mjd0, mjd1 = _validated(ra, dec, fov, start, end)
-    try:
-        found = await run_in_threadpool(sx.search, grid.ra, grid.dec, mjd0, mjd1)
-    except sx.IrsaError as e:
-        raise HTTPException(502, f"Could not reach the SPHEREx archive: {e}")
-    exposures = sx.thin(found)
 
     def record(header: dict, payload: bytes = b"") -> bytes:
         header["nbytes"] = len(payload)
@@ -93,6 +87,16 @@ async def stream(
         return struct.pack("<I", len(h)) + h + payload
 
     def generate():
+        # The search runs inside the stream so that the response starts at
+        # once and the page can say what is happening.
+        yield record({"type": "status", "message": "searching"})
+        try:
+            found, complete = sx.search(grid.ra, grid.dec, mjd0, mjd1)
+        except sx.IrsaError as e:
+            log.warning("search failed: %s", e)
+            yield record({"type": "fatal", "message": "The SPHEREx archive search is not responding. Please try again in a minute."})
+            return
+        exposures = sx.thin(found)
         yield record(
             {
                 "type": "field",
@@ -103,6 +107,7 @@ async def stream(
                 "scale_arcsec": grid.scale,
                 "total": len(exposures),
                 "found": len(found),
+                "complete": complete,
                 "mjd_start": mjd0,
                 "mjd_end": mjd1,
             }

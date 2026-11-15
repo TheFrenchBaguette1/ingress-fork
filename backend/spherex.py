@@ -51,6 +51,7 @@ COLLECTIONS = [
 
 CACHE_DIR = Path(os.environ.get("INGRESS_CACHE", Path(__file__).parent / ".cache"))
 MAX_PARALLEL = int(os.environ.get("INGRESS_PARALLEL", "24"))  # bucket reads
+SEARCH_TTL = float(os.environ.get("INGRESS_SEARCH_TTL", 6 * 3600))  # seconds
 IRSA_PARALLEL = int(os.environ.get("INGRESS_IRSA_PARALLEL", "4"))  # IRSA is rate limited
 
 # ---- limits on what a request may ask for ---------------------------------
@@ -128,25 +129,57 @@ class Grid:
 # ---------------------------------------------------------------- search ---
 
 
-def search(ra: float, dec: float, mjd_start: float, mjd_end: float) -> list[dict]:
-    """Exposures whose footprint contains the position, oldest first."""
+def search(ra: float, dec: float, mjd_start: float, mjd_end: float) -> tuple[list[dict], bool]:
+    """Exposures whose footprint contains the position, oldest first.
+
+    Returns (exposures, complete). The archive's search service fails for
+    some requests when it is busy, so each collection is asked separately
+    with quick retries; a collection that still does not answer is
+    skipped and `complete` is False. Complete answers are kept for
+    SEARCH_TTL seconds, and an old answer is used if the archive is down.
+    """
+    name = hashlib.sha1(
+        f"{ra:.5f}|{dec:.5f}|{mjd_start:.2f}|{mjd_end:.2f}|{','.join(COLLECTIONS)}".encode()
+    ).hexdigest()
+    path = CACHE_DIR / "search" / f"{name}.json"
+    cached = None
+    try:
+        cached = json.loads(path.read_text())
+        if time.time() - cached["at"] < SEARCH_TTL:
+            return cached["exposures"], True
+    except (OSError, ValueError, KeyError):
+        pass
+
     def query(coll):
-        return _get_with_retry(
-            f"{IRSA}/SIA",
-            params={
-                "COLLECTION": coll,
-                "POS": f"circle {ra:.6f} {dec:.6f} 0.001",
-                "TIME": f"{mjd_start:.5f} {mjd_end:.5f}",
-                "RESPONSEFORMAT": "csv",
-            },
-        ).text
+        try:
+            text = _get_with_retry(
+                f"{IRSA}/SIA",
+                params={
+                    "COLLECTION": coll,
+                    "POS": f"circle {ra:.6f} {dec:.6f} 0.001",
+                    "TIME": f"{mjd_start:.5f} {mjd_end:.5f}",
+                    "RESPONSEFORMAT": "csv",
+                },
+                tries=8,  # failures come back within a second, so retry briskly
+                delay=0.2,
+                max_delay=1.0,
+                timeout=(8, 30),
+            ).text
+            return text if text.startswith("s_ra,") else None
+        except IrsaError as e:
+            log.warning("search of %s failed: %s", coll, e)
+            return None
 
     with ThreadPoolExecutor(len(COLLECTIONS)) as ex:
         tables = list(ex.map(query, COLLECTIONS))
+    if all(t is None for t in tables):
+        if cached:
+            return cached["exposures"], True
+        raise IrsaError("the SPHEREx archive search did not respond")
 
     seen: dict[tuple[str, int], dict] = {}
     for coll, text in zip(COLLECTIONS, tables):
-        for row in csv.DictReader(io.StringIO(text)):
+        for row in csv.DictReader(io.StringIO(text or "")):
             try:
                 det = int(row["energy_bandpassname"].rsplit("D", 1)[1])
                 t0, t1 = float(row["t_min"]), float(row["t_max"])
@@ -164,7 +197,14 @@ def search(ra: float, dec: float, mjd_start: float, mjd_end: float) -> list[dict
                 "url": row["access_url"],
                 "collection": coll,
             }
-    return sorted(seen.values(), key=lambda e: e["mjd"])
+    exposures = sorted(seen.values(), key=lambda e: e["mjd"])
+    complete = all(t is not None for t in tables)
+    if complete:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        tmp = path.with_suffix(f".{threading.get_ident()}.tmp")
+        tmp.write_text(json.dumps({"at": time.time(), "exposures": exposures}))
+        tmp.replace(path)
+    return exposures, complete
 
 
 def thin(exposures: list[dict], limit: int = MAX_EXPOSURES) -> list[dict]:
@@ -182,14 +222,14 @@ class IrsaError(RuntimeError):
     pass
 
 
-def _get_with_retry(url, params=None, headers=None, stream=False, tries=7, slots=None):
+def _get_with_retry(url, params=None, headers=None, stream=False, tries=7, slots=None,
+                    delay=0.4, max_delay=8.0, timeout=(15, 90)):
     """GET with backoff. IRSA answers 503 'Server busy' when it is loaded."""
     slots = slots or _irsa_slots
-    delay = 0.4
     for attempt in range(tries):
         try:
             with slots:
-                r = _session().get(url, params=params, headers=headers, stream=stream, timeout=(15, 90))
+                r = _session().get(url, params=params, headers=headers, stream=stream, timeout=timeout)
                 if r.status_code in (200, 206):
                     if not stream:
                         r.content  # read while holding the slot
@@ -201,7 +241,7 @@ def _get_with_retry(url, params=None, headers=None, stream=False, tries=7, slots
         if attempt == tries - 1 or (isinstance(status, int) and status in (400, 403, 404, 416)):
             raise IrsaError(f"request failed ({status}): {url}")
         time.sleep(delay + random.random() * delay)
-        delay = min(delay * 2, 8)
+        delay = min(delay * 2, max_delay)
     raise IrsaError(url)
 
 

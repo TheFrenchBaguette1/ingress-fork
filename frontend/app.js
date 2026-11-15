@@ -156,7 +156,7 @@ async function load(q) {
       throw new Error(typeof d === "string" ? d : Array.isArray(d) ? d.map((x) => x.msg).join("; ") : `Server error ${res.status}`);
     }
     const reader = res.body.getReader();
-    let buf = new Uint8Array(0), shown = 0;
+    let buf = new Uint8Array(0), shown = 0, lastDone = 0, lastCost = 0;
     const text = new TextDecoder();
     for (;;) {
       const { done, value } = await reader.read();
@@ -175,11 +175,14 @@ async function load(q) {
         handleRecord(head, buf.slice(4 + hlen, end));
         buf = buf.subarray(end);
       }
-      // Refresh the preview each time the number of exposures has grown by
-      // half, so the total work stays proportional to the final size.
-      if (state.exposures.length >= Math.max(12, shown * 1.5)) {
+      // Refresh the animation as exposures arrive. The pause between
+      // refreshes grows with their cost, so stacking modes stay responsive.
+      if (state.exposures.length > shown && performance.now() - lastDone > Math.max(250, 5 * lastCost)) {
         shown = state.exposures.length;
+        const t0 = performance.now();
         rebuild();
+        lastDone = performance.now();
+        lastCost = lastDone - t0;
         await new Promise((r) => setTimeout(r, 0));
       }
     }
@@ -190,7 +193,7 @@ async function load(q) {
   }
   if (state.abort !== abort) return;
   state.loading = false;
-  $("progress").hidden = !!state.exposures.length;
+  $("progress").hidden = true;
   if (state.field && !state.exposures.length && $("form-error").hidden) {
     $("progress").hidden = true;
     $("empty").hidden = false;
@@ -213,6 +216,9 @@ function handleRecord(head, payload) {
     state.exposures.push({ meta: head, data });
   } else if (head.type === "error") {
     state.failed++;
+  } else if (head.type === "fatal") {
+    showError(head.message);
+    $("empty").textContent = "Loading failed.";
   }
   if (state.field && state.field.total) {
     const done = state.exposures.length + state.failed;
@@ -475,6 +481,7 @@ function draw() {
     `<b>${state.exposures.length}</b> exposures loaded` +
     (fl.found > fl.total ? ` (a sample of ${fl.found} available; narrow the dates to see them all)` : "") +
     (state.failed ? `, ${state.failed} failed` : "") +
+    (fl.complete === false ? " (part of the archive did not respond, so some exposures may be missing; reload to retry)" : "") +
     ` · this frame: <b>${f.n}</b> exposure${f.n > 1 ? "s" : ""}, ` +
     `<b>${f.wmin.toFixed(2)}${f.n > 1 ? "–" + f.wmax.toFixed(2) : ""} µm</b>` +
     ` · flags at centre: ${flagNames.length ? flagNames.join(", ") : "none"}`;
