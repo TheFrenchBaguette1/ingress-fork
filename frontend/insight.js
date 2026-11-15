@@ -191,14 +191,10 @@ const Insight = (() => {
     if (!box) return;
     const res = Measure.result(), obj = Measure.picked();
     if (!res || !res.points.length || !obj || !state.field) { box.hidden = true; cancel(); shownFor = null; return; }
+    // No key on the server: the panel stays out of the way entirely.
+    if (enabled === false) { box.hidden = true; cancel(); shownFor = null; return; }
+    if (enabled === null) { box.hidden = true; return; } // still asking the server; init() calls back
     box.hidden = false;
-    if (enabled === false) {
-      cancel(); shownFor = null;
-      $("insight-body").textContent = ""; $("insight-again").hidden = true; $("insight-model").textContent = "";
-      status("The AI reading is off. To switch it on, set OPENAI_API_KEY on the server (see .env.example) and restart it.");
-      return;
-    }
-    if (enabled === null) return; // still asking the server; init() calls back
     if (state.loading) {
       cancel(); shownFor = null;
       $("insight-body").textContent = ""; $("insight-again").hidden = true;

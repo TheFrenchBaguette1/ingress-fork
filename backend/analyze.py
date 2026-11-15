@@ -195,7 +195,10 @@ def analyze(request: Request, data: dict = Body(...)):
         _fail(413, "too_large", "Too much data was sent for the AI reading.")
     if not isinstance(data.get("photometry"), dict):
         _fail(422, "bad_request", "No measurements were sent.")
-    client = request.client.host if request.client else "unknown"
+    # Behind a hosting proxy every visitor shares the proxy's address, so
+    # prefer the address the proxy reports for the visitor.
+    forwarded = request.headers.get("x-forwarded-for", "").split(",")[0].strip()
+    client = forwarded or (request.client.host if request.client else "unknown")
     if not _allow(client):
         _fail(429, "busy", "Too many AI readings were requested. Try again in a few minutes.")
 
