@@ -1,0 +1,6 @@
+astropy>=6.0
+fastapi>=0.110
+numpy>=1.26
+requests>=2.31
+scipy>=1.11
+uvicorn>=0.29

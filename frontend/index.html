@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Ingress · SPHEREx sky blinker</title>
+  <meta name="description" content="Watch any patch of sky change over time in NASA SPHEREx infrared images.">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="top">
+  <h1>Ingress</h1>
+  <p>Blink SPHEREx infrared images of any patch of sky to spot things that move or vary.</p>
+</header>
+
+<main class="layout">
+  <form id="query" class="panel" novalidate>
+    <h2>Field</h2>
+
+    <label for="coords">Coordinates (RA Dec, ICRS)</label>
+    <input id="coords" type="text" autocomplete="off" spellcheck="false"
+           placeholder="08h55m10.831s -7d14m42.53s  or  133.7951 -7.2451">
+    <p id="coords-echo" class="hint"></p>
+
+    <label for="preset">Or pick a test target</label>
+    <select id="preset">
+      <option value="">Choose…</option>
+      <option value="269.4464 4.7686">Barnard's Star (fast proper motion)</option>
+      <option value="331.096 -56.801">Epsilon Indi B (brown dwarf pair)</option>
+      <option value="133.795129 -7.245147">WISE 0855−0714 (cold brown dwarf)</option>
+      <option value="76.9564 30.4014">RW Aurigae (variable star)</option>
+      <option value="248.1675 66.7550">R Draconis (variable star)</option>
+    </select>
+
+    <label for="fov">Field of view to load (arcmin)</label>
+    <input id="fov" type="number" min="1" max="20" step="0.5" value="10" required>
+    <p class="hint">Between <span id="fov-min">1</span> and <span id="fov-max">20</span>. You can zoom in to smaller fields instantly after loading.</p>
+
+    <div class="row">
+      <div>
+        <label for="start">From</label>
+        <input id="start" type="date" required>
+      </div>
+      <div>
+        <label for="end">To</label>
+        <input id="end" type="date" required>
+      </div>
+    </div>
+    <p class="hint">SPHEREx survey data begins <span id="date-min"></span>.</p>
+
+    <p id="form-error" class="error" role="alert" hidden></p>
+    <button id="load" type="submit" class="primary">Load images</button>
+
+    <div id="progress" hidden>
+      <div class="bar"><div id="bar-fill"></div></div>
+      <p id="progress-text" class="hint"></p>
+    </div>
+  </form>
+
+  <section class="viewer">
+    <div class="stage">
+      <canvas id="view" width="640" height="640" aria-label="SPHEREx image animation"></canvas>
+      <div id="empty" class="empty">Enter coordinates and press <b>Load images</b>.</div>
+      <div id="frame-label" class="tag tl"></div>
+      <div id="readout" class="tag bl"></div>
+      <div id="compass" class="tag tr" hidden>N ↑ &nbsp; E ←</div>
+    </div>
+
+    <div class="transport">
+      <button id="play" type="button" disabled aria-label="Play or pause">Pause</button>
+      <button id="prev" type="button" disabled aria-label="Previous frame">◀</button>
+      <input id="frame" type="range" min="0" max="0" value="0" disabled aria-label="Frame">
+      <button id="next" type="button" disabled aria-label="Next frame">▶</button>
+      <label class="inline" for="speed">Speed</label>
+      <input id="speed" type="range" min="1" max="20" value="4" aria-label="Frames per second">
+      <span id="speed-val" class="num">4 fps</span>
+    </div>
+    <canvas id="timeline" width="640" height="46" aria-label="Exposure timeline"></canvas>
+
+    <div class="controls">
+      <fieldset>
+        <legend>Field of view</legend>
+        <div id="zooms" class="chips"></div>
+      </fieldset>
+
+      <fieldset>
+        <legend>Wavelength</legend>
+        <div id="bands" class="chips"></div>
+        <div class="row tight">
+          <label class="inline" for="wmin">Custom</label>
+          <input id="wmin" type="number" min="0.75" max="5" step="0.05" value="0.75">
+          <span>to</span>
+          <input id="wmax" type="number" min="0.75" max="5" step="0.05" value="5">
+          <span>µm</span>
+          <button id="wapply" type="button">Apply</button>
+        </div>
+      </fieldset>
+
+      <fieldset>
+        <legend>Frames</legend>
+        <div class="row tight">
+          <label class="inline" for="group">One frame per</label>
+          <select id="group">
+            <option value="pass">survey pass (~6 months apart)</option>
+            <option value="day">day</option>
+            <option value="exposure">exposure</option>
+          </select>
+        </div>
+        <div class="row tight">
+          <label class="inline" for="mode">Show</label>
+          <select id="mode">
+            <option value="image">images</option>
+            <option value="diff">difference from the average</option>
+          </select>
+        </div>
+      </fieldset>
+
+      <fieldset>
+        <legend>Display</legend>
+        <div class="row tight">
+          <label class="inline" for="stretch">Stretch</label>
+          <select id="stretch">
+            <option value="asinh">asinh</option>
+            <option value="sqrt">square root</option>
+            <option value="linear">linear</option>
+          </select>
+          <label class="check"><input id="invert" type="checkbox"> Invert</label>
+          <label class="check"><input id="smooth" type="checkbox" checked> Smooth</label>
+          <label class="check"><input id="cross" type="checkbox" checked> Crosshair</label>
+        </div>
+        <div class="row tight">
+          <label class="inline" for="white">Brightness</label>
+          <input id="white" type="range" min="900" max="1000" value="995" aria-label="White point percentile">
+        </div>
+      </fieldset>
+    </div>
+
+    <div id="info" class="info"></div>
+  </section>
+</main>
+
+<footer>
+  Images: NASA SPHEREx spectral images (Level 2) from the
+  <a href="https://irsa.ipac.caltech.edu/Missions/spherex.html">NASA/IPAC Infrared Science Archive</a>.
+  Link to any field with <code>?ra=&lt;deg&gt;&amp;dec=&lt;deg&gt;&amp;fov=&lt;arcmin&gt;</code>.
+</footer>
+
+<script src="app.js"></script>
+</body>
+</html>
