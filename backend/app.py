@@ -17,14 +17,21 @@ from fastapi import FastAPI, HTTPException, Query
 from fastapi.responses import FileResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 
+from . import presets
 from . import spherex as sx
 
+logging.getLogger("ingress").setLevel(logging.INFO)
+if not logging.getLogger("ingress").handlers:  # show our progress lines beside uvicorn's
+    _h = logging.StreamHandler()
+    _h.setFormatter(logging.Formatter("%(levelname)s:     %(name)s: %(message)s"))
+    logging.getLogger("ingress").addHandler(_h)
 log = logging.getLogger("ingress")
 FRONTEND = Path(__file__).resolve().parent.parent / "frontend"
 MJD_EPOCH = date(1858, 11, 17).toordinal()
 SURVEY_START = date.fromordinal(int(sx.MJD_MIN) + MJD_EPOCH)
 
 app = FastAPI(title="Ingress", docs_url="/api/docs", openapi_url="/api/openapi.json")
+presets.start()
 # Worker threads spend their time waiting on the archive; the semaphores in
 # spherex.py limit the load this server puts on it, across all its users.
 pool = cf.ThreadPoolExecutor(max_workers=sx.MAX_PARALLEL)
@@ -62,6 +69,7 @@ def config():
         "flag_bits": sx.FLAG_BITS,
         "masked_bits": sx.MASKED_BITS,
         "collections": sx.COLLECTIONS,
+        "presets": presets.listing(),
     }
 
 
@@ -90,12 +98,16 @@ def stream(
         # The search runs inside the stream so that the response starts at
         # once and the page can say what is happening.
         yield record({"type": "status", "message": "searching"})
-        try:
-            found, complete = sx.search(grid.ra, grid.dec, mjd0, mjd1)
-        except sx.IrsaError as e:
-            log.warning("search failed: %s", e)
-            yield record({"type": "fatal", "message": "The SPHEREx archive search is not responding. Please try again in a minute."})
-            return
+        bundled = presets.find(grid.ra, grid.dec)
+        if bundled is not None:  # a test target: its exposures are already known
+            found, complete = [e for e in bundled if mjd0 <= e["mjd"] <= mjd1], True
+        else:
+            try:
+                found, complete = sx.search(grid.ra, grid.dec, mjd0, mjd1)
+            except sx.IrsaError as e:
+                log.warning("search failed: %s", e)
+                yield record({"type": "fatal", "message": "The SPHEREx archive search is not responding. Please try again in a minute."})
+                return
         exposures = sx.thin(found)
         yield record(
             {

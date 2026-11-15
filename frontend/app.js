@@ -210,6 +210,8 @@ function handleRecord(head, payload) {
     state.field = head;
     state.zoom = head.fov_arcmin;
     buildZoomChips();
+    if (state.wantObj && window.Measure) Measure.pickSky(...state.wantObj); // object named in the link
+    state.wantObj = null;
     if (!head.total) return;
     $("empty").textContent = `Loading ${head.total} exposures…`;
   } else if (head.type === "exposure") {
@@ -632,7 +634,9 @@ function syncUrl(q) {
   if (state.band !== "all") p.set("band", state.band);
   if (state.zoom && state.field && state.zoom !== state.field.fov_arcmin) p.set("zoom", state.zoom);
   if (state.group !== DEFAULT_GROUP) p.set("group", state.group);
-  history.replaceState(null, "", `?${p}`);
+  const obj = window.Measure && Measure.picked();
+  if (obj) p.set("obj", `${obj.ra.toFixed(5)},${obj.dec.toFixed(5)}`);
+  history.replaceState(null, "", `?${p}`.replace("%2C", ","));
 }
 
 function readUrl() {
@@ -641,6 +645,8 @@ function readUrl() {
   if (band && (band === "all" || cfg.bands[band] || /^c:[\d.]+-[\d.]+$/.test(band))) state.band = band;
   if (["pass", "day", "exposure"].includes(p.get("group"))) state.group = $("group").value = p.get("group");
   if (Number(p.get("zoom")) > 0) state.wantZoom = Number(p.get("zoom"));
+  const obj = (p.get("obj") || "").split(",").map(Number);
+  if (obj.length === 2 && obj.every(Number.isFinite) && obj[0] >= 0 && obj[0] < 360 && Math.abs(obj[1]) <= 90) state.wantObj = obj;
   if (p.get("fov")) $("fov").value = p.get("fov");
   if (p.get("start")) $("start").value = p.get("start");
   if (p.get("end")) $("end").value = p.get("end");
@@ -666,6 +672,12 @@ async function init() {
   $("fov").min = cfg.fov.min; $("fov").max = cfg.fov.max; $("fov").value = cfg.fov.default;
   $("fov-min").textContent = cfg.fov.min; $("fov-max").textContent = cfg.fov.max;
   buildBandChips();
+  if (Array.isArray(cfg.presets) && cfg.presets.length) {
+    // The server's list of test targets replaces the one written in the page.
+    const menu = $("preset");
+    menu.length = 1;
+    for (const p of cfg.presets) menu.add(new Option(`${p.name} (${p.note})`, `${p.ra} ${p.dec}`));
+  }
 
   $("query").addEventListener("submit", (ev) => {
     ev.preventDefault();

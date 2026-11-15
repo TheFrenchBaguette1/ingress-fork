@@ -337,7 +337,7 @@ const Measure = (() => {
     else if (result.saturated) sat = ` <span class="warn">${result.saturated} of ${result.points.length} measurements are saturated (hollow points) and are left out of the comparison.</span>`;
     $("measure-method").textContent = result.geometry.halo
       ? `Typical brightness in a ring from ${result.geometry.in.toFixed(0)}″ to ${result.geometry.out.toFixed(0)}″ around the star (solid rings on the image), sky from the dashed rings. Error bars come from the scatter of the surrounding sky.`
-      : "Aperture photometry in a 9.5″ circle (solid ring on the image), sky from the dashed rings. Error bars come from the scatter of the surrounding sky; fluxes are not corrected for light falling outside the aperture.";
+      : "Aperture photometry in a 9.5″ circle (solid ring on the image), sky from the dashed rings. Error bars come from the scatter of the surrounding sky. Fluxes are not corrected for light falling outside the aperture: compared with the 2MASS and WISE catalogues they read about 4–13% low.";
     $("measure-summary").innerHTML = `${fmtSexa(sky.ra, sky.dec)} · ${result.points.length} measurements<br>${line}${sat}`;
 
     const legend = $("measure-legend");
@@ -357,6 +357,22 @@ const Measure = (() => {
     const xi = -(i - c) * as, eta = (j - c) * as, d0 = f.dec * rad;
     const den = Math.cos(d0) - eta * Math.sin(d0), dra = Math.atan2(xi, den);
     return { ra: (((f.ra + dra / rad) % 360) + 360) % 360, dec: Math.atan(((Math.sin(d0) + eta * Math.cos(d0)) * Math.cos(dra)) / den) / rad };
+  }
+
+  function skyToPixel(ra, dec) {
+    const f = state.field, rad = Math.PI / 180, c = (f.n - 1) / 2, as = (f.scale_arcsec / 3600) * rad;
+    const d0 = f.dec * rad, d = dec * rad, da = (ra - f.ra) * rad;
+    const cosc = Math.sin(d0) * Math.sin(d) + Math.cos(d0) * Math.cos(d) * Math.cos(da);
+    const xi = (Math.cos(d) * Math.sin(da)) / cosc;
+    const eta = (Math.cos(d0) * Math.sin(d) - Math.sin(d0) * Math.cos(d) * Math.cos(da)) / cosc;
+    return { i: c - xi / as, j: c + eta / as };
+  }
+
+  function copyLink() {
+    const btn = $("measure-link"), done = (msg) => { btn.textContent = msg; setTimeout(() => { btn.textContent = "Copy link to this object"; }, 1800); };
+    const fallback = () => { window.prompt("Copy this link:", location.href); };
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(location.href).then(() => done("Link copied"), fallback);
+    else fallback();
   }
 
   function hover(id, ev) {
@@ -394,6 +410,12 @@ const Measure = (() => {
   return {
     refresh,
     clear() { pick = null; result = null; render(); },
+    /** Sky position of the selected object, or null. */
+    picked() { return pick && state.field ? pixelToSky(pick.i, pick.j) : null; },
+    /** The current measurements (see compute), or null. */
+    result() { return result; },
+    /** Select the object at a sky position, e.g. from a shared link. */
+    pickSky(ra, dec) { const p = skyToPixel(ra, dec); Measure.pickAt(p.i, p.j); },
     /** Called with the pointer position in grid pixels. */
     pickAt(i, j) {
       const n = state.field && state.field.n;
@@ -401,6 +423,7 @@ const Measure = (() => {
       pick = { i, j };
       refresh();
       draw();
+      syncUrl();
     },
     /** Draw the aperture on the image. `toCanvas` maps grid pixels to canvas. */
     overlay(ctx, toCanvas, unit) {
@@ -426,7 +449,8 @@ const Measure = (() => {
         $(id).addEventListener("mouseleave", () => { $("chart-tip").hidden = true; });
       }
       $("measure-csv").onclick = downloadCsv;
-      $("measure-clear").onclick = () => { Measure.clear(); draw(); };
+      $("measure-clear").onclick = () => { Measure.clear(); draw(); syncUrl(); };
+      $("measure-link").onclick = copyLink;
       window.addEventListener("resize", () => { if (result) render(); });
       render();
     },
